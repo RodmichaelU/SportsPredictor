@@ -1,5 +1,9 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+Requires Node 20.9+ (Next.js 16). If your system Node is older, install one via `brew install node@20` and `export PATH="/opt/homebrew/opt/node@20/bin:$PATH"` before running the commands below, or use `nvm use` (see `.nvmrc`).
+
+Currently wired to typed mock data in `lib/mockData.ts` via `lib/api.ts`, standing in for the FastAPI backend (Phase 6 of `../PLAN.md`). Swap the function bodies in `lib/api.ts` for real `fetch` calls once that API exists — nothing else in `app/` or `components/` should need to change.
+
 ## Getting Started
 
 First, run the development server:
