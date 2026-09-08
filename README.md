@@ -27,6 +27,11 @@ python3 -m src.features --start 2015 --end 2025  # build data/processed/features
 python3 -m pytest tests/                          # leakage tests
 python3 -m src.elo                                # from-scratch Elo baseline
 python3 -m src.models                              # logistic regression + XGBoost vs. Elo
+python3 -m src.evaluate                            # calibration + comparison vs. the closing line
+
+python3 -m src.predict --season 2026 --week 2      # freeze predictions for a week (never regenerated)
+python3 -m src.reconcile                            # score frozen predictions against final results
+uvicorn api.main:app --port 8000                    # serve /sports /predictions /results /accuracy
 ```
 
 ## Frontend
