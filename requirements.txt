@@ -7,3 +7,4 @@ xgboost==2.1.1
 matplotlib==3.9.2
 fastapi==0.115.4
 uvicorn==0.32.0
+pytest==8.3.3
