@@ -20,7 +20,11 @@ SPORT = "cfb"
 MODEL_VERSION = "v1-logistic-ridge"
 
 
-def generate_predictions(season: int, week: int) -> list[dict]:
+def generate_predictions(season: int, week: int, backfill: bool = False) -> list[dict]:
+    """backfill=True predicts a week that's already been played, using the
+    same pre-game-only features (still no peeking at the result) -- for
+    validating reconcile.py end-to-end without waiting for a live week to
+    finish. Real usage should leave this False."""
     history = models.load_feature_table()
     X_train = history[models.FEATURE_COLUMNS]
     y_train_win = history["home_win"]
@@ -29,7 +33,11 @@ def generate_predictions(season: int, week: int) -> list[dict]:
     logistic = models.fit_logistic(X_train, y_train_win)
     ridge = models.fit_ridge(X_train, y_train_margin)
 
-    upcoming = features.build_upcoming_features(season, week)
+    if backfill:
+        season_features = features.build_season_features(season)
+        upcoming = season_features[season_features["week"] == week] if not season_features.empty else season_features
+    else:
+        upcoming = features.build_upcoming_features(season, week)
     if upcoming.empty:
         return []
 
@@ -92,9 +100,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--season", type=int, required=True)
     parser.add_argument("--week", type=int, required=True)
+    parser.add_argument(
+        "--backfill", action="store_true",
+        help="Predict an already-played week (still pre-game features only) to validate reconcile.py without waiting for a live week to finish.",
+    )
     args = parser.parse_args()
 
-    rows = generate_predictions(args.season, args.week)
+    rows = generate_predictions(args.season, args.week, backfill=args.backfill)
     inserted = save_predictions(rows)
     skipped = len(rows) - inserted
     print(f"{args.season} week {args.week}: {len(rows)} upcoming games, {inserted} predictions saved, {skipped} already on record")
