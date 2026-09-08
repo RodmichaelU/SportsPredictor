@@ -32,8 +32,9 @@ export interface Result extends Prediction {
 export interface AccuracySummary {
   sport: string;
   sample_size: number;
-  accuracy: number;
-  log_loss: number;
-  brier_score: number;
-  ece: number;
+  // Null when sample_size is 0 -- no games have been reconciled yet.
+  accuracy: number | null;
+  log_loss: number | null;
+  brier_score: number | null;
+  ece: number | null;
 }

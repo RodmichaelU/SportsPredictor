@@ -3,10 +3,10 @@ import { formatPercent } from "@/lib/format";
 
 export default function AccuracyCard({ summary }: { summary: AccuracySummary }) {
   const stats = [
-    { label: "Accuracy", value: formatPercent(summary.accuracy) },
-    { label: "Log loss", value: summary.log_loss.toFixed(3) },
-    { label: "Brier score", value: summary.brier_score.toFixed(3) },
-    { label: "Calibration error", value: summary.ece.toFixed(3) },
+    { label: "Accuracy", value: summary.accuracy === null ? "—" : formatPercent(summary.accuracy) },
+    { label: "Log loss", value: summary.log_loss === null ? "—" : summary.log_loss.toFixed(3) },
+    { label: "Brier score", value: summary.brier_score === null ? "—" : summary.brier_score.toFixed(3) },
+    { label: "Calibration error", value: summary.ece === null ? "—" : summary.ece.toFixed(3) },
   ];
 
   return (
