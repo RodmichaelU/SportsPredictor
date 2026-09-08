@@ -24,6 +24,12 @@ from src import ingest
 INITIAL_RATING = 1500.0
 SEASON_CARRYOVER = 0.75  # fraction of a team's rating-above-mean kept into the next season
 
+# Found by tune() on 2015-2024 (see Phase 3 output). Other modules that just
+# need Elo ratings/predictions (e.g. models.py) can reuse these directly
+# instead of re-running the grid search.
+TUNED_K = 80
+TUNED_HOME_ADVANTAGE = 50
+
 
 def load_games(start_season: int, end_season: int) -> pd.DataFrame:
     rows = []
