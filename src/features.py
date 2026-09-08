@@ -100,7 +100,7 @@ def _rest_days(team_game_stats: pd.DataFrame) -> pd.DataFrame:
     df = team_game_stats.sort_values(["season", "team", "start_date"]).copy()
     df["prev_game_date"] = df.groupby(["season", "team"])["start_date"].shift(1)
     df["rest_days"] = (
-        pd.to_datetime(df["start_date"]) - pd.to_datetime(df["prev_game_date"])
+        pd.to_datetime(df["start_date"], utc=True) - pd.to_datetime(df["prev_game_date"], utc=True)
     ).dt.days
     return df[["season", "gameId", "team", "rest_days"]]
 
@@ -157,12 +157,14 @@ def _side_frame(std: pd.DataFrame, rest: pd.DataFrame, talent: dict, prev_sp: di
     return merged
 
 
-def build_season_features(season: int) -> pd.DataFrame:
-    games_df = _games_frame(season)
-    if games_df.empty:
-        return pd.DataFrame()
-
-    team_stats = _team_game_stats_frame(season, games_df)
+def _build_historical_features(season: int, games_df: pd.DataFrame) -> pd.DataFrame:
+    """Feature rows for already-played games_df. Rolling stats are joined by
+    (gameId, team), which only works because every target game is also one
+    of the games its own rolling average is built from (shifted out of its
+    own average, per season_to_date_stats) -- see build_upcoming_features for
+    why that join key doesn't work for not-yet-played games."""
+    history_df = target_df = games_df
+    team_stats = _team_game_stats_frame(season, history_df)
     std = season_to_date_stats(team_stats)
     rest = _rest_days(team_stats)
 
@@ -173,12 +175,10 @@ def build_season_features(season: int) -> pd.DataFrame:
     home_frame = _side_frame(std, rest, talent, prev_sp, "home")
     away_frame = _side_frame(std, rest, talent, prev_sp, "away")
 
-    result = games_df.merge(home_frame, on=["id", "homeTeam"], how="left")
+    result = target_df.merge(home_frame, on=["id", "homeTeam"], how="left")
     result = result.merge(away_frame, on=["id", "awayTeam"], how="left")
 
     result["closing_spread"] = result["id"].map(closing_spread)
-    result["home_win"] = (result["homePoints"] > result["awayPoints"]).astype(int)
-    result["margin"] = result["homePoints"] - result["awayPoints"]
 
     result = result.rename(
         columns={
@@ -198,7 +198,120 @@ def build_season_features(season: int) -> pd.DataFrame:
     keep = (
         ["game_id", "season", "week", "start_date", "home_team", "away_team",
          "neutral_site", "conference_game", "home_pregame_elo", "away_pregame_elo",
-         "closing_spread", "home_points", "away_points", "home_win", "margin"]
+         "closing_spread"]
+        + [f"home_{c}" for c in ROLLING_STAT_COLUMNS + ["rest_days", "talent", "sp_rating", "sp_offense", "sp_defense"]]
+        + [f"away_{c}" for c in ROLLING_STAT_COLUMNS + ["rest_days", "talent", "sp_rating", "sp_offense", "sp_defense"]]
+    )
+
+    if result["home_points"].notna().any():
+        result["home_win"] = (result["home_points"] > result["away_points"]).astype(int)
+        result["margin"] = result["home_points"] - result["away_points"]
+        keep += ["home_points", "away_points", "home_win", "margin"]
+
+    return result[keep]
+
+
+def build_season_features(season: int) -> pd.DataFrame:
+    games_df = _games_frame(season)
+    if games_df.empty:
+        return pd.DataFrame()
+    return _build_historical_features(season, games_df)
+
+
+def _current_team_snapshot(team_game_stats: pd.DataFrame) -> pd.DataFrame:
+    """One row per team: their rolling-stat averages and most recent game
+    date, through their last completed game. Unlike season_to_date_stats
+    (which excludes each row's own game, for attaching to a historical game
+    that's part of the average), this includes every game played so far --
+    there's no "own game" to exclude, because it's used for a game that
+    hasn't happened yet."""
+    cols = ["team", "last_game_date"] + ROLLING_STAT_COLUMNS
+    if team_game_stats.empty:
+        return pd.DataFrame(columns=cols)
+    df = team_game_stats.sort_values(["team", "start_date"]).copy()
+    grouped = df.groupby("team")
+    for col in ROLLING_STAT_COLUMNS:
+        df[col] = grouped[col].transform(lambda s: s.expanding().mean())
+    snapshot = df.groupby("team", as_index=False).last().rename(columns={"start_date": "last_game_date"})
+    return snapshot[cols]
+
+
+def _side_frame_upcoming(snapshot: pd.DataFrame, talent: dict, prev_sp: dict, prefix: str) -> pd.DataFrame:
+    merged = snapshot.copy()
+    merged["talent"] = merged["team"].map(talent)
+    sp_df = pd.DataFrame.from_dict(prev_sp, orient="index")
+    if not sp_df.empty:
+        merged = merged.merge(sp_df, left_on="team", right_index=True, how="left")
+    else:
+        merged["sp_rating"] = float("nan")
+        merged["sp_offense"] = float("nan")
+        merged["sp_defense"] = float("nan")
+
+    feature_cols = ["last_game_date"] + ROLLING_STAT_COLUMNS + ["talent", "sp_rating", "sp_offense", "sp_defense"]
+    merged = merged[["team"] + feature_cols]
+    merged = merged.rename(columns={c: f"{prefix}_{c}" for c in feature_cols})
+    merged = merged.rename(columns={"team": f"{prefix}Team"})
+    return merged
+
+
+def build_upcoming_features(season: int, week: int) -> pd.DataFrame:
+    """Feature rows for a season/week's not-yet-played games, for predict.py.
+    Pulls the season fresh (not just the historical cache) since an
+    in-progress season's schedule and completed-game stats change week to
+    week.
+
+    Rolling stats can't be joined by gameId the way build_season_features
+    does it: an upcoming game has no historical gameId to match against in
+    the stats table. Instead, each team's *current* rolling average (through
+    their most recent completed game, via _current_team_snapshot) is looked
+    up by team name and carried forward onto whatever their next game is."""
+    all_games = pd.DataFrame(ingest.ingest_games(season))
+    if all_games.empty:
+        return pd.DataFrame()
+    fbs = (all_games["homeClassification"] == "fbs") & (all_games["awayClassification"] == "fbs")
+    history_df = all_games[fbs & (all_games["completed"] == True)]  # noqa: E712
+    target_df = all_games[fbs & (all_games["week"] == week) & (all_games["completed"] == False)]  # noqa: E712
+    if target_df.empty:
+        return pd.DataFrame()
+
+    team_stats = _team_game_stats_frame(season, history_df)
+    snapshot = _current_team_snapshot(team_stats)
+
+    talent = _talent_map(season)
+    prev_sp = _sp_map(season - 1)
+    closing_spread = _closing_spread_map(season)
+
+    home_frame = _side_frame_upcoming(snapshot, talent, prev_sp, "home")
+    away_frame = _side_frame_upcoming(snapshot, talent, prev_sp, "away")
+
+    result = target_df.merge(home_frame, on="homeTeam", how="left")
+    result = result.merge(away_frame, on="awayTeam", how="left")
+
+    result["closing_spread"] = result["id"].map(closing_spread)
+    # utc=True keeps both sides tz-aware even when a team has no last_game_date
+    # at all (an all-NaN column would otherwise infer as tz-naive and blow up
+    # subtracting from the tz-aware startDate column).
+    start_date = pd.to_datetime(result["startDate"], utc=True)
+    result["home_rest_days"] = (start_date - pd.to_datetime(result["home_last_game_date"], utc=True)).dt.days
+    result["away_rest_days"] = (start_date - pd.to_datetime(result["away_last_game_date"], utc=True)).dt.days
+
+    result = result.rename(
+        columns={
+            "id": "game_id",
+            "startDate": "start_date",
+            "homeTeam": "home_team",
+            "awayTeam": "away_team",
+            "neutralSite": "neutral_site",
+            "conferenceGame": "conference_game",
+            "homePregameElo": "home_pregame_elo",
+            "awayPregameElo": "away_pregame_elo",
+        }
+    )
+
+    keep = (
+        ["game_id", "season", "week", "start_date", "home_team", "away_team",
+         "neutral_site", "conference_game", "home_pregame_elo", "away_pregame_elo",
+         "closing_spread"]
         + [f"home_{c}" for c in ROLLING_STAT_COLUMNS + ["rest_days", "talent", "sp_rating", "sp_offense", "sp_defense"]]
         + [f"away_{c}" for c in ROLLING_STAT_COLUMNS + ["rest_days", "talent", "sp_rating", "sp_offense", "sp_defense"]]
     )
