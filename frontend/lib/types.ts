@@ -38,3 +38,16 @@ export interface AccuracySummary {
   brier_score: number | null;
   ece: number | null;
 }
+
+export interface FeatureWeight {
+  feature: string;
+  label: string;
+  weight: number; // standardized logistic regression coefficient
+}
+
+export interface ModelWeights {
+  sport: string;
+  model_version: string;
+  trained_on_games: number;
+  weights: FeatureWeight[]; // sorted by |weight| descending
+}

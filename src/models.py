@@ -51,6 +51,21 @@ def fit_logistic(X_train, y_train) -> Pipeline:
     return pipe
 
 
+def logistic_feature_weights(pipeline: Pipeline, feature_columns: list) -> list:
+    """Standardized logistic regression coefficients: since StandardScaler
+    runs before the classifier in the pipeline, these are already comparable
+    across features on wildly different raw scales (e.g. elo_diff spans
+    hundreds of points, closing_spread spans dozens, neutral_site is 0/1) --
+    a bigger |coefficient| means a one-standard-deviation swing in that
+    feature moves the predicted log-odds more, which is what "driving the
+    model" means for a linear model like this one."""
+    coefs = pipeline.named_steps["clf"].coef_[0]
+    return [
+        {"feature": col, "weight": float(w)}
+        for col, w in zip(feature_columns, coefs)
+    ]
+
+
 def fit_xgb_classifier(X_train, y_train) -> XGBClassifier:
     clf = XGBClassifier(
         n_estimators=300,

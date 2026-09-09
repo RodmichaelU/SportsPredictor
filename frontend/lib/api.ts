@@ -1,5 +1,5 @@
-import { MOCK_ACCURACY, MOCK_PREDICTIONS, MOCK_RESULTS, MOCK_SPORTS } from "./mockData";
-import { AccuracySummary, Prediction, Result, Sport } from "./types";
+import { MOCK_ACCURACY, MOCK_MODEL_WEIGHTS, MOCK_PREDICTIONS, MOCK_RESULTS, MOCK_SPORTS } from "./mockData";
+import { AccuracySummary, ModelWeights, Prediction, Result, Sport } from "./types";
 
 // With NEXT_PUBLIC_API_URL unset, falls back to mock data (useful for UI
 // work without the backend running). Set it to point at api/main.py
@@ -44,6 +44,11 @@ export async function getResults(sport: string, week?: number): Promise<Result[]
 export async function getAccuracy(sport: string): Promise<AccuracySummary> {
   if (!API_BASE_URL) return { ...MOCK_ACCURACY, sport };
   return fetchJson<AccuracySummary>(`/accuracy?sport=${sport}`);
+}
+
+export async function getModelWeights(sport: string): Promise<ModelWeights> {
+  if (!API_BASE_URL) return { ...MOCK_MODEL_WEIGHTS, sport };
+  return fetchJson<ModelWeights>(`/model-weights?sport=${sport}`);
 }
 
 export const isLiveApi = Boolean(API_BASE_URL);

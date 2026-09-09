@@ -6,6 +6,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 const TABS = [
   { href: "/predictions", label: "Predictions" },
   { href: "/results", label: "Results" },
+  { href: "/model", label: "Model" },
 ];
 
 export default function NavTabs() {

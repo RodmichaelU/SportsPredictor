@@ -37,6 +37,29 @@ FEATURE_COLUMNS = ["elo_diff"] + [f"{b}_diff" for b in DIFF_BASES] + [
 ]
 FEATURES_PATH = config.PROCESSED_DIR / "cfb_features.parquet"
 
+# Human-readable labels for FEATURE_COLUMNS, for the frontend's model-weights
+# view. All "_diff" features are home minus away, so e.g. a positive
+# elo_diff means the home team is rated higher.
+FEATURE_LABELS = {
+    "elo_diff": "Elo rating gap",
+    "off_ppa_diff": "Offensive EPA/play gap",
+    "off_success_rate_diff": "Offensive success rate gap",
+    "off_explosiveness_diff": "Offensive explosiveness gap",
+    "off_points_per_drive_diff": "Points per drive gap (offense)",
+    "def_ppa_diff": "Defensive EPA/play allowed gap",
+    "def_success_rate_diff": "Defensive success rate allowed gap",
+    "def_explosiveness_diff": "Defensive explosiveness allowed gap",
+    "def_points_per_drive_diff": "Points per drive allowed gap (defense)",
+    "rest_days_diff": "Rest days gap",
+    "talent_diff": "Recruiting talent composite gap",
+    "sp_rating_diff": "SP+ overall rating gap",
+    "sp_offense_diff": "SP+ offense rating gap",
+    "sp_defense_diff": "SP+ defense rating gap",
+    "closing_spread": "Closing betting spread",
+    "neutral_site": "Neutral site game",
+    "conference_game": "Conference game",
+}
+
 
 def _games_frame(season: int) -> pd.DataFrame:
     games = ingest.ingest_games(season)

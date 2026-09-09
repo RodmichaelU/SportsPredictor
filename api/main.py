@@ -16,9 +16,10 @@ import numpy as np
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-from src import store
+from src import models, predict, store
 from src.evaluate import expected_calibration_error
 from src.models import classification_metrics
+from src.sports import registry
 
 app = FastAPI(title="SportsPredictor API")
 
@@ -125,4 +126,28 @@ def get_accuracy(sport: str = "cfb"):
         "log_loss": metrics["log_loss"],
         "brier_score": metrics["brier"],
         "ece": ece,
+    }
+
+
+@app.get("/model-weights")
+def get_model_weights(sport: str = "cfb"):
+    """Standardized logistic regression coefficients -- what's actually
+    driving the win-probability model, in the same units regardless of a
+    feature's raw scale. Trains fresh on each call (cheap: a few thousand
+    rows, a linear model) rather than persisting a model artifact."""
+    features = registry.features_module(sport)
+    df = features.load_feature_table()
+    pipeline = models.fit_logistic(df[features.FEATURE_COLUMNS], df["home_win"])
+
+    weights = models.logistic_feature_weights(pipeline, features.FEATURE_COLUMNS)
+    labels = getattr(features, "FEATURE_LABELS", {})
+    for w in weights:
+        w["label"] = labels.get(w["feature"], w["feature"])
+    weights.sort(key=lambda w: -abs(w["weight"]))
+
+    return {
+        "sport": sport,
+        "model_version": predict.MODEL_VERSION,
+        "trained_on_games": len(df),
+        "weights": weights,
     }

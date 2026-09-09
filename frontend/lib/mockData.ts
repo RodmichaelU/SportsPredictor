@@ -1,4 +1,4 @@
-import { AccuracySummary, Prediction, Result, Sport } from "./types";
+import { AccuracySummary, ModelWeights, Prediction, Result, Sport } from "./types";
 
 // Placeholder data shaped like the real Phase 6 API responses will be, so the
 // UI can be built and reviewed before the CFBD-backed pipeline exists.
@@ -185,4 +185,24 @@ export const MOCK_ACCURACY: AccuracySummary = {
   log_loss: 0.612,
   brier_score: 0.211,
   ece: 0.045,
+};
+
+export const MOCK_MODEL_WEIGHTS: ModelWeights = {
+  sport: "cfb",
+  model_version: MODEL_VERSION,
+  trained_on_games: 7884,
+  weights: [
+    { feature: "closing_spread", label: "Closing betting spread", weight: -1.391 },
+    { feature: "sp_rating_diff", label: "SP+ overall rating gap", weight: 0.454 },
+    { feature: "sp_offense_diff", label: "SP+ offense rating gap", weight: -0.412 },
+    { feature: "sp_defense_diff", label: "SP+ defense rating gap", weight: 0.327 },
+    { feature: "elo_diff", label: "Elo rating gap", weight: 0.225 },
+    { feature: "def_success_rate_diff", label: "Defensive success rate allowed gap", weight: -0.159 },
+    { feature: "def_ppa_diff", label: "Defensive EPA/play allowed gap", weight: 0.135 },
+    { feature: "off_points_per_drive_diff", label: "Points per drive gap (offense)", weight: 0.113 },
+    { feature: "off_ppa_diff", label: "Offensive EPA/play gap", weight: -0.080 },
+    { feature: "talent_diff", label: "Recruiting talent composite gap", weight: 0.055 },
+    { feature: "rest_days_diff", label: "Rest days gap", weight: 0.016 },
+    { feature: "neutral_site", label: "Neutral site game", weight: 0.002 },
+  ],
 };

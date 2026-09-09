@@ -26,6 +26,18 @@ FEATURE_COLUMNS = ["elo_diff"] + [f"{b}_diff" for b in DIFF_BASES] + [
 ]
 FEATURES_PATH = config.PROCESSED_DIR / "nfl_features.parquet"
 
+# Human-readable labels for FEATURE_COLUMNS, for the frontend's model-weights
+# view. All "_diff" features are home minus away.
+FEATURE_LABELS = {
+    "elo_diff": "Elo rating gap",
+    "off_epa_diff": "Offensive EPA/play gap",
+    "def_epa_allowed_diff": "Defensive EPA/play allowed gap",
+    "rest_days_diff": "Rest days gap",
+    "closing_spread": "Closing betting spread",
+    "neutral_site": "Neutral site game",
+    "div_game": "Division game",
+}
+
 
 def _team_game_stats_frame(start_season: int, end_season: int) -> pd.DataFrame:
     """One row per team per game: this team's EPA/play, offense and defense
