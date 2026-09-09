@@ -9,11 +9,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src import cfbd_client
+from src.sports.cfb import client
 
 
 def main():
-    games = cfbd_client.get(
+    games = client.get(
         "/games",
         {"year": 2023, "seasonType": "regular", "team": "Georgia"},
     )

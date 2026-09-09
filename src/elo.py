@@ -2,6 +2,11 @@
 (logistic regression, gradient boosting) has to beat to justify its added
 complexity.
 
+Sport-agnostic: operates only on the common games schema (season, week,
+start_date, home_team, away_team, neutral_site, home_points, away_points,
+home_win) that every src.sports.<id>.ingest module's load_games() produces.
+Adding a sport never requires touching this file.
+
 Ratings update sequentially, game by game in chronological order, so each
 prediction only ever uses information from strictly earlier games -- no
 train/test split is needed for the simulation itself (it's inherently
@@ -9,7 +14,7 @@ online), but K and home-field advantage are tuned on an earlier stretch of
 seasons and evaluated on a held-out most-recent season, consistent with the
 walk-forward approach the rest of the plan uses.
 
-Run: python -m src.elo
+Run: python -m src.elo [--sport cfb]
 """
 
 import argparse
@@ -19,42 +24,17 @@ import pandas as pd
 from sklearn.metrics import brier_score_loss, log_loss
 
 import config
-from src import ingest
+from src.sports import registry
 
 INITIAL_RATING = 1500.0
 SEASON_CARRYOVER = 0.75  # fraction of a team's rating-above-mean kept into the next season
 
-# Found by tune() on 2015-2024 (see Phase 3 output). Other modules that just
-# need Elo ratings/predictions (e.g. models.py) can reuse these directly
-# instead of re-running the grid search.
+# Found by tune() on CFB 2015-2024 (see Phase 3 output). Other modules that
+# just need Elo ratings/predictions (e.g. models.py) can reuse these
+# directly instead of re-running the grid search. Re-tune per sport if the
+# schedule length / scoring environment differs a lot from CFB.
 TUNED_K = 80
 TUNED_HOME_ADVANTAGE = 50
-
-
-def load_games(start_season: int, end_season: int) -> pd.DataFrame:
-    rows = []
-    for year in range(start_season, end_season + 1):
-        for g in ingest.ingest_games(year):
-            if not g["completed"]:
-                continue
-            if g["homeClassification"] != "fbs" or g["awayClassification"] != "fbs":
-                continue
-            rows.append(
-                {
-                    "game_id": g["id"],
-                    "season": g["season"],
-                    "week": g["week"],
-                    "start_date": g["startDate"],
-                    "home_team": g["homeTeam"],
-                    "away_team": g["awayTeam"],
-                    "neutral_site": g["neutralSite"],
-                    "home_points": g["homePoints"],
-                    "away_points": g["awayPoints"],
-                }
-            )
-    df = pd.DataFrame(rows)
-    df["home_win"] = (df["home_points"] > df["away_points"]).astype(int)
-    return df.sort_values(["season", "start_date"]).reset_index(drop=True)
 
 
 def expected_home_win_prob(home_rating: float, away_rating: float, home_advantage: float) -> float:
@@ -134,12 +114,13 @@ def tune(games: pd.DataFrame, tune_end_season: int) -> tuple[float, float]:
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--sport", default="cfb", choices=registry.SPORTS)
     parser.add_argument("--start", type=int, default=config.START_SEASON)
     parser.add_argument("--end", type=int, default=config.CURRENT_SEASON)
     parser.add_argument("--test-season", type=int, default=config.CURRENT_SEASON)
     args = parser.parse_args()
 
-    games = load_games(args.start, args.end)
+    games = registry.ingest_module(args.sport).load_games(args.start, args.end)
     tune_end = args.test_season - 1
 
     best_k, best_hfa = tune(games, tune_end)

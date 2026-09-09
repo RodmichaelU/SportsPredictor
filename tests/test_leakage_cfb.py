@@ -15,7 +15,7 @@ import math
 
 import pandas as pd
 
-from src import features, ingest
+from src.sports.cfb import features, ingest
 
 TEST_SEASON = 2023
 

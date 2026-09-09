@@ -2,7 +2,11 @@
 line converted to an implied win probability -- the real test. Beating Elo
 is the floor; matching or beating the market is a genuinely high bar.
 
-Run: python -m src.evaluate [--test-season YEAR]
+Sport-agnostic like models.py, with one assumption baked in: every sport's
+feature table includes a "closing_spread" column (home-team-referenced) for
+the market comparison. cfb and nfl both satisfy this.
+
+Run: python -m src.evaluate [--sport cfb] [--test-season YEAR]
 """
 
 import argparse
@@ -18,6 +22,7 @@ from sklearn.linear_model import LogisticRegression
 
 import config
 from src import elo, models
+from src.sports import registry
 
 
 def fit_market_model(train: pd.DataFrame) -> LogisticRegression:
@@ -60,27 +65,28 @@ def plot_calibration(predictions: dict, out_path):
     plt.close()
 
 
-def build_predictions(test_season: int) -> dict:
+def build_predictions(sport: str, test_season: int) -> dict:
     """Returns {model_name: (y_true, y_prob)}, all restricted to the games in
     the held-out season that have a closing line, so the comparison against
     the market is apples-to-apples rather than comparing full-season metrics
     against a smaller market-only subset."""
-    df = models.load_feature_table()
+    features = registry.features_module(sport)
+    df = features.load_feature_table()
     train, test = models.temporal_split(df, test_season)
     train, test = train.set_index("game_id"), test.set_index("game_id")
 
     test_with_spread = test.dropna(subset=["closing_spread"])
     ids = test_with_spread.index
 
-    X_train, y_train_win = train[models.FEATURE_COLUMNS], train["home_win"]
+    X_train, y_train_win = train[features.FEATURE_COLUMNS], train["home_win"]
     logistic = models.fit_logistic(X_train, y_train_win)
     xgb_clf = models.fit_xgb_classifier(X_train, y_train_win)
     market = fit_market_model(train)
 
-    X_test = test_with_spread[models.FEATURE_COLUMNS]
+    X_test = test_with_spread[features.FEATURE_COLUMNS]
     y_test = test_with_spread["home_win"].values
 
-    games_elo = elo.load_games(config.START_SEASON, test_season)
+    games_elo = registry.ingest_module(sport).load_games(config.START_SEASON, test_season)
     elo_predictions = elo.simulate(games_elo, elo.TUNED_K, elo.TUNED_HOME_ADVANTAGE)
     elo_test = elo_predictions[elo_predictions["season"] == test_season].set_index("game_id")
     elo_aligned = elo_test.loc[ids]
@@ -98,13 +104,14 @@ def build_predictions(test_season: int) -> dict:
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--sport", default="cfb", choices=registry.SPORTS)
     parser.add_argument("--test-season", type=int, default=config.CURRENT_SEASON)
     args = parser.parse_args()
 
-    predictions = build_predictions(args.test_season)
+    predictions = build_predictions(args.sport, args.test_season)
     n = len(next(iter(predictions.values()))[0])
 
-    print(f"Evaluation on held-out season {args.test_season} ({n} games with a closing line):\n")
+    print(f"Evaluation on held-out season {args.test_season} ({args.sport}, {n} games with a closing line):\n")
     print(f"{'model':<26}{'log_loss':>10}{'brier':>10}{'auc':>10}{'accuracy':>10}{'ece':>10}")
     market_log_loss = None
     for name, (y_true, y_prob) in predictions.items():
@@ -122,7 +129,7 @@ def main():
         verdict = "beats" if log_loss < market_log_loss else "loses to"
         print(f"  {name}: {log_loss:.4f} ({verdict} the market)")
 
-    out_path = config.PROCESSED_DIR / f"calibration_{args.test_season}.png"
+    out_path = config.PROCESSED_DIR / f"calibration_{args.sport}_{args.test_season}.png"
     plot_calibration(predictions, out_path)
     print(f"\nCalibration curve saved to {out_path}")
 

@@ -7,26 +7,27 @@ the store via INSERT OR IGNORE -- a prediction already on record for a game
 is never regenerated, so what's shown later as "predicted" is always what
 was actually known before kickoff.
 
-Run: python -m src.predict --season 2026 --week 2
+Run: python -m src.predict --sport cfb --season 2026 --week 2
 """
 
 import argparse
 from datetime import datetime, timezone
 
-import config
-from src import features, models, store
+from src import models, store
+from src.sports import registry
 
-SPORT = "cfb"
 MODEL_VERSION = "v1-logistic-ridge"
 
 
-def generate_predictions(season: int, week: int, backfill: bool = False) -> list[dict]:
+def generate_predictions(sport: str, season: int, week: int, backfill: bool = False) -> list[dict]:
     """backfill=True predicts a week that's already been played, using the
     same pre-game-only features (still no peeking at the result) -- for
     validating reconcile.py end-to-end without waiting for a live week to
     finish. Real usage should leave this False."""
-    history = models.load_feature_table()
-    X_train = history[models.FEATURE_COLUMNS]
+    features = registry.features_module(sport)
+
+    history = features.load_feature_table()
+    X_train = history[features.FEATURE_COLUMNS]
     y_train_win = history["home_win"]
     y_train_margin = history["margin"]
 
@@ -41,14 +42,8 @@ def generate_predictions(season: int, week: int, backfill: bool = False) -> list
     if upcoming.empty:
         return []
 
-    upcoming = upcoming.copy()
-    for base in models.DIFF_BASES:
-        upcoming[f"{base}_diff"] = upcoming[f"home_{base}"] - upcoming[f"away_{base}"]
-    upcoming["elo_diff"] = upcoming["home_pregame_elo"] - upcoming["away_pregame_elo"]
-    upcoming["neutral_site"] = upcoming["neutral_site"].astype(int)
-    upcoming["conference_game"] = upcoming["conference_game"].astype(int)
-
-    X = upcoming[models.FEATURE_COLUMNS]
+    upcoming = features.add_model_features(upcoming)
+    X = upcoming[features.FEATURE_COLUMNS]
     home_win_prob = logistic.predict_proba(X)[:, 1]
     predicted_margin = ridge.predict(X)
 
@@ -58,7 +53,7 @@ def generate_predictions(season: int, week: int, backfill: bool = False) -> list
         winner = game["home_team"] if home_win_prob[i] >= 0.5 else game["away_team"]
         rows.append(
             {
-                "sport": SPORT,
+                "sport": sport,
                 "game_id": int(game["game_id"]),
                 "season": int(game["season"]),
                 "week": int(game["week"]),
@@ -98,6 +93,7 @@ def save_predictions(rows: list[dict]) -> int:
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--sport", default="cfb", choices=registry.SPORTS)
     parser.add_argument("--season", type=int, required=True)
     parser.add_argument("--week", type=int, required=True)
     parser.add_argument(
@@ -106,10 +102,10 @@ def main():
     )
     args = parser.parse_args()
 
-    rows = generate_predictions(args.season, args.week, backfill=args.backfill)
+    rows = generate_predictions(args.sport, args.season, args.week, backfill=args.backfill)
     inserted = save_predictions(rows)
     skipped = len(rows) - inserted
-    print(f"{args.season} week {args.week}: {len(rows)} upcoming games, {inserted} predictions saved, {skipped} already on record")
+    print(f"{args.sport} {args.season} week {args.week}: {len(rows)} upcoming games, {inserted} predictions saved, {skipped} already on record")
     for row in rows:
         print(f"  {row['away_team']} @ {row['home_team']}: {row['predicted_winner']} "
               f"({row['home_win_prob']:.1%} home win prob, margin {row['predicted_margin']:+.1f})")

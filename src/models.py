@@ -2,13 +2,18 @@
 gradient boosting for margin. Temporal split: train on seasons before the
 test season, test on the held-out season, printed side by side with Elo.
 
-Run: python -m src.models [--test-season YEAR]
+Sport-agnostic: every function here takes a plain X/y (numpy arrays or a
+DataFrame slice) and knows nothing about which sport or which named columns
+produced them. main() is the only place that knows about sports at all, and
+it only knows the registry -- a new sport's features module (FEATURE_COLUMNS
++ load_feature_table()) is the entire integration surface.
+
+Run: python -m src.models [--sport cfb] [--test-season YEAR]
 """
 
 import argparse
 
 import numpy as np
-import pandas as pd
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression, RidgeCV
 from sklearn.metrics import (
@@ -25,30 +30,10 @@ from xgboost import XGBClassifier, XGBRegressor
 
 import config
 from src import elo
-
-# Diff features (home - away) for symmetric matchup modeling, plus a few
-# game-context fields that aren't team-specific. All pre-game per features.py.
-DIFF_BASES = [
-    "off_ppa", "off_success_rate", "off_explosiveness", "off_points_per_drive",
-    "def_ppa", "def_success_rate", "def_explosiveness", "def_points_per_drive",
-    "rest_days", "talent", "sp_rating", "sp_offense", "sp_defense",
-]
-FEATURE_COLUMNS = ["elo_diff"] + [f"{b}_diff" for b in DIFF_BASES] + [
-    "closing_spread", "neutral_site", "conference_game",
-]
+from src.sports import registry
 
 
-def load_feature_table() -> pd.DataFrame:
-    df = pd.read_parquet(config.PROCESSED_DIR / "features.parquet")
-    df["elo_diff"] = df["home_pregame_elo"] - df["away_pregame_elo"]
-    for base in DIFF_BASES:
-        df[f"{base}_diff"] = df[f"home_{base}"] - df[f"away_{base}"]
-    df["neutral_site"] = df["neutral_site"].astype(int)
-    df["conference_game"] = df["conference_game"].astype(int)
-    return df
-
-
-def temporal_split(df: pd.DataFrame, test_season: int):
+def temporal_split(df, test_season: int):
     train = df[df["season"] < test_season]
     test = df[df["season"] == test_season]
     return train, test
@@ -122,8 +107,8 @@ def regression_metrics(y_true, y_pred) -> dict:
     }
 
 
-def elo_metrics_for_season(test_season: int, start_season: int) -> dict:
-    games = elo.load_games(start_season, test_season)
+def elo_metrics_for_season(sport: str, test_season: int, start_season: int) -> dict:
+    games = registry.ingest_module(sport).load_games(start_season, test_season)
     predictions = elo.simulate(games, elo.TUNED_K, elo.TUNED_HOME_ADVANTAGE)
     test_predictions = predictions[predictions["season"] == test_season]
     return classification_metrics(test_predictions["home_win"], test_predictions["home_win_prob"])
@@ -131,14 +116,16 @@ def elo_metrics_for_season(test_season: int, start_season: int) -> dict:
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--sport", default="cfb", choices=registry.SPORTS)
     parser.add_argument("--test-season", type=int, default=config.CURRENT_SEASON)
     args = parser.parse_args()
 
-    df = load_feature_table()
+    features = registry.features_module(args.sport)
+    df = features.load_feature_table()
     train, test = temporal_split(df, args.test_season)
 
-    X_train, y_train_win = train[FEATURE_COLUMNS], train["home_win"]
-    X_test, y_test_win = test[FEATURE_COLUMNS], test["home_win"]
+    X_train, y_train_win = train[features.FEATURE_COLUMNS], train["home_win"]
+    X_test, y_test_win = test[features.FEATURE_COLUMNS], test["home_win"]
     y_train_margin, y_test_margin = train["margin"], test["margin"]
 
     logistic = fit_logistic(X_train, y_train_win)
@@ -147,12 +134,12 @@ def main():
     xgb_reg = fit_xgb_regressor(X_train, y_train_margin)
 
     win_results = {
-        "Elo (baseline)": elo_metrics_for_season(args.test_season, config.START_SEASON),
+        "Elo (baseline)": elo_metrics_for_season(args.sport, args.test_season, config.START_SEASON),
         "Logistic Regression": classification_metrics(y_test_win, logistic.predict_proba(X_test)[:, 1]),
         "XGBoost Classifier": classification_metrics(y_test_win, xgb_clf.predict_proba(X_test)[:, 1]),
     }
 
-    print(f"Win probability metrics on held-out season {args.test_season}:")
+    print(f"Win probability metrics on held-out season {args.test_season} ({args.sport}):")
     print(f"{'model':<22}{'log_loss':>10}{'brier':>10}{'auc':>10}{'accuracy':>10}")
     for name, m in win_results.items():
         print(f"{name:<22}{m['log_loss']:>10.4f}{m['brier']:>10.4f}{m['auc']:>10.4f}{m['accuracy']:>10.4f}")

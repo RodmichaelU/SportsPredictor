@@ -6,7 +6,7 @@ team's stats from the game being predicted, or any later game, never leak in.
 Preseason inputs (talent composite, prior-season SP+, CFBD's own pregame Elo)
 are safe to use as-is since they're fixed before the season/game starts.
 
-Run: python -m src.features [--start YEAR] [--end YEAR]
+Run: python -m src.sports.cfb.features [--start YEAR] [--end YEAR]
 """
 
 import argparse
@@ -14,7 +14,7 @@ import argparse
 import pandas as pd
 
 import config
-from src import ingest
+from src.sports.cfb import ingest
 
 ROLLING_STAT_COLUMNS = [
     "off_ppa",
@@ -26,6 +26,16 @@ ROLLING_STAT_COLUMNS = [
     "def_explosiveness",
     "def_points_per_drive",
 ]
+
+# Diff features (home - away) for symmetric matchup modeling, plus a few
+# game-context fields that aren't team-specific. Consumed by models.py /
+# evaluate.py via FEATURE_COLUMNS and load_feature_table() below -- neither
+# of those modules knows these particular column names exist.
+DIFF_BASES = ROLLING_STAT_COLUMNS + ["rest_days", "talent", "sp_rating", "sp_offense", "sp_defense"]
+FEATURE_COLUMNS = ["elo_diff"] + [f"{b}_diff" for b in DIFF_BASES] + [
+    "closing_spread", "neutral_site", "conference_game",
+]
+FEATURES_PATH = config.PROCESSED_DIR / "cfb_features.parquet"
 
 
 def _games_frame(season: int) -> pd.DataFrame:
@@ -324,6 +334,28 @@ def build_features(start_season: int, end_season: int) -> pd.DataFrame:
     return pd.concat(frames, ignore_index=True)
 
 
+def add_model_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Adds elo_diff/*_diff columns (FEATURE_COLUMNS) on top of the raw
+    home_*/away_* columns build_season_features / build_upcoming_features
+    produce. Used both for the historical table (load_feature_table) and for
+    live predictions (predict.py), so predict.py never needs to know these
+    particular column names exist."""
+    df = df.copy()
+    df["elo_diff"] = df["home_pregame_elo"] - df["away_pregame_elo"]
+    for base in DIFF_BASES:
+        df[f"{base}_diff"] = df[f"home_{base}"] - df[f"away_{base}"]
+    df["neutral_site"] = df["neutral_site"].astype(int)
+    df["conference_game"] = df["conference_game"].astype(int)
+    return df
+
+
+def load_feature_table() -> pd.DataFrame:
+    """Historical feature table with FEATURE_COLUMNS computed, for models.py
+    / evaluate.py. Those modules never see off_ppa, sp_rating, etc. by name
+    -- only whatever's listed in FEATURE_COLUMNS."""
+    return add_model_features(pd.read_parquet(FEATURES_PATH))
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--start", type=int, default=config.START_SEASON)
@@ -331,9 +363,8 @@ def main():
     args = parser.parse_args()
 
     df = build_features(args.start, args.end)
-    out_path = config.PROCESSED_DIR / "features.parquet"
-    df.to_parquet(out_path, index=False)
-    print(f"Wrote {len(df)} rows, {len(df.columns)} columns to {out_path}")
+    df.to_parquet(FEATURES_PATH, index=False)
+    print(f"Wrote {len(df)} rows, {len(df.columns)} columns to {FEATURES_PATH}")
 
 
 if __name__ == "__main__":

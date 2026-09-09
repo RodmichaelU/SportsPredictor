@@ -4,28 +4,32 @@ Only fills in the result columns (home_score, away_score, actual_winner,
 actual_margin, hit) for rows where hit IS NULL -- the prediction fields
 themselves (frozen by predict.py) are never touched.
 
+Sport-agnostic: reuses each sport's load_games() (the same common-schema
+loader elo.py uses), which already returns completed games only.
+
 Run: python -m src.reconcile [--sport cfb]
 """
 
 import argparse
 from datetime import datetime, timezone
 
-from src import ingest, store
+from src import store
+from src.sports import registry
 
-SPORT = "cfb"
 
-
-def reconcile(sport: str = SPORT) -> int:
+def reconcile(sport: str) -> int:
     conn = store.get_connection()
     pending = conn.execute(
         "SELECT DISTINCT season FROM predictions WHERE sport = ? AND hit IS NULL", (sport,)
     ).fetchall()
 
+    ingest = registry.ingest_module(sport)
     updated = 0
     now = datetime.now(timezone.utc).isoformat()
     for row in pending:
         season = row["season"]
-        games_by_id = {g["id"]: g for g in ingest.ingest_games(season)}
+        completed = ingest.load_games(season, season)
+        games_by_id = {g["game_id"]: g for g in completed.to_dict("records")} if not completed.empty else {}
 
         rows = conn.execute(
             "SELECT game_id FROM predictions WHERE sport = ? AND season = ? AND hit IS NULL",
@@ -34,10 +38,10 @@ def reconcile(sport: str = SPORT) -> int:
 
         for r in rows:
             game = games_by_id.get(r["game_id"])
-            if not game or not game["completed"]:
-                continue
-            home_score, away_score = game["homePoints"], game["awayPoints"]
-            actual_winner = game["homeTeam"] if home_score > away_score else game["awayTeam"]
+            if not game:
+                continue  # not completed yet (load_games only returns completed games)
+            home_score, away_score = game["home_points"], game["away_points"]
+            actual_winner = game["home_team"] if home_score > away_score else game["away_team"]
             actual_margin = home_score - away_score
 
             pred = conn.execute(
@@ -64,7 +68,7 @@ def reconcile(sport: str = SPORT) -> int:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--sport", default=SPORT)
+    parser.add_argument("--sport", default="cfb", choices=registry.SPORTS)
     args = parser.parse_args()
 
     updated = reconcile(args.sport)
