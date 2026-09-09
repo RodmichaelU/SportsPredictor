@@ -54,7 +54,7 @@ def generate_predictions(sport: str, season: int, week: int, backfill: bool = Fa
         rows.append(
             {
                 "sport": sport,
-                "game_id": int(game["game_id"]),
+                "game_id": str(game["game_id"]),
                 "season": int(game["season"]),
                 "week": int(game["week"]),
                 "home_team": game["home_team"],

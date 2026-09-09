@@ -108,8 +108,9 @@ def regression_metrics(y_true, y_pred) -> dict:
 
 
 def elo_metrics_for_season(sport: str, test_season: int, start_season: int) -> dict:
-    games = registry.ingest_module(sport).load_games(start_season, test_season)
-    predictions = elo.simulate(games, elo.TUNED_K, elo.TUNED_HOME_ADVANTAGE)
+    ingest = registry.ingest_module(sport)
+    games = ingest.load_games(start_season, test_season)
+    predictions = elo.simulate(games, ingest.ELO_K, ingest.ELO_HOME_ADVANTAGE)
     test_predictions = predictions[predictions["season"] == test_season]
     return classification_metrics(test_predictions["home_win"], test_predictions["home_win_prob"])
 

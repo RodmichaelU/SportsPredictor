@@ -86,8 +86,9 @@ def build_predictions(sport: str, test_season: int) -> dict:
     X_test = test_with_spread[features.FEATURE_COLUMNS]
     y_test = test_with_spread["home_win"].values
 
-    games_elo = registry.ingest_module(sport).load_games(config.START_SEASON, test_season)
-    elo_predictions = elo.simulate(games_elo, elo.TUNED_K, elo.TUNED_HOME_ADVANTAGE)
+    sport_ingest = registry.ingest_module(sport)
+    games_elo = sport_ingest.load_games(config.START_SEASON, test_season)
+    elo_predictions = elo.simulate(games_elo, sport_ingest.ELO_K, sport_ingest.ELO_HOME_ADVANTAGE)
     elo_test = elo_predictions[elo_predictions["season"] == test_season].set_index("game_id")
     elo_aligned = elo_test.loc[ids]
 

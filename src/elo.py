@@ -29,12 +29,10 @@ from src.sports import registry
 INITIAL_RATING = 1500.0
 SEASON_CARRYOVER = 0.75  # fraction of a team's rating-above-mean kept into the next season
 
-# Found by tune() on CFB 2015-2024 (see Phase 3 output). Other modules that
-# just need Elo ratings/predictions (e.g. models.py) can reuse these
-# directly instead of re-running the grid search. Re-tune per sport if the
-# schedule length / scoring environment differs a lot from CFB.
-TUNED_K = 80
-TUNED_HOME_ADVANTAGE = 50
+# Each sport's already-tuned K / home-field advantage live on its own ingest
+# module (e.g. src.sports.cfb.ingest.ELO_K) rather than here, so a caller
+# that needs ready-to-use Elo predictions for a given sport doesn't have to
+# re-run tune()'s grid search every time.
 
 
 def expected_home_win_prob(home_rating: float, away_rating: float, home_advantage: float) -> float:

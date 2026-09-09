@@ -29,7 +29,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-SPORTS = [{"id": "cfb", "name": "College Football"}]
+SPORTS = [
+    {"id": "cfb", "name": "College Football"},
+    {"id": "nfl", "name": "NFL"},
+]
 
 
 def _prediction_dict(row) -> dict:

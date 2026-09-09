@@ -17,6 +17,13 @@ from src.sports.cfb import client
 
 SEASON_TYPE = "regular"
 
+# Found by `python -m src.elo --sport cfb` (tuned on 2015-2024, tested on
+# 2025: 71.7% accuracy vs. 59.2% naive home baseline). Looked up by
+# models.py / evaluate.py via this module rather than hardcoded, so each
+# sport's Elo baseline uses its own tuned parameters.
+ELO_K = 80
+ELO_HOME_ADVANTAGE = 50
+
 
 def ingest_games(year: int) -> list:
     return client.get(

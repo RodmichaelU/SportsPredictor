@@ -29,7 +29,9 @@ def reconcile(sport: str) -> int:
     for row in pending:
         season = row["season"]
         completed = ingest.load_games(season, season)
-        games_by_id = {g["game_id"]: g for g in completed.to_dict("records")} if not completed.empty else {}
+        games_by_id = (
+            {str(g["game_id"]): g for g in completed.to_dict("records")} if not completed.empty else {}
+        )
 
         rows = conn.execute(
             "SELECT game_id FROM predictions WHERE sport = ? AND season = ? AND hit IS NULL",

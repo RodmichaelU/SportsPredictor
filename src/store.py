@@ -14,7 +14,7 @@ import config
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS predictions (
     sport TEXT NOT NULL,
-    game_id INTEGER NOT NULL,
+    game_id TEXT NOT NULL,
     season INTEGER NOT NULL,
     week INTEGER NOT NULL,
     home_team TEXT NOT NULL,
