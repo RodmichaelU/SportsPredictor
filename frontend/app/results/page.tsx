@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getAccuracy, getResults, getSports } from "@/lib/api";
 import AccuracyCard from "@/components/AccuracyCard";
 import HitBadge from "@/components/HitBadge";
@@ -33,6 +34,7 @@ export default async function ResultsPage(props: PageProps<"/results">) {
                 <th className="px-4 py-3 font-medium">Confidence</th>
                 <th className="px-4 py-3 font-medium">Final</th>
                 <th className="px-4 py-3 font-medium">Result</th>
+                <th className="px-4 py-3 font-medium"></th>
               </tr>
             </thead>
             <tbody>
@@ -54,6 +56,14 @@ export default async function ResultsPage(props: PageProps<"/results">) {
                   </td>
                   <td className="px-4 py-3">
                     <HitBadge hit={r.hit} />
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <Link
+                      href={`/games/${r.game_id}?sport=${sport}`}
+                      className="text-xs font-medium text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
+                    >
+                      Why? →
+                    </Link>
                   </td>
                 </tr>
               ))}

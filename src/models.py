@@ -66,6 +66,43 @@ def logistic_feature_weights(pipeline: Pipeline, feature_columns: list) -> list:
     ]
 
 
+def logistic_contributions(pipeline: Pipeline, feature_columns: list, X_row) -> dict:
+    """Exact per-feature breakdown of one game's prediction: since logistic
+    regression is linear in log-odds, log_odds = intercept + sum(coef_i *
+    scaled_feature_i), so each term's contribution to that sum is well
+    defined -- not an approximation the way SHAP values are for nonlinear
+    models. X_row is a single-row DataFrame slice with feature_columns."""
+    imputer = pipeline.named_steps["impute"]
+    scaler = pipeline.named_steps["scale"]
+    clf = pipeline.named_steps["clf"]
+
+    X_scaled = scaler.transform(imputer.transform(X_row))
+    contributions = X_scaled[0] * clf.coef_[0]
+    return {
+        "intercept": float(clf.intercept_[0]),
+        "contributions": {col: float(c) for col, c in zip(feature_columns, contributions)},
+    }
+
+
+def raw_value_pair(feature: str, row) -> tuple | None:
+    """For a "_diff" feature, the (home_value, away_value) pair it was
+    computed from, e.g. "sp_rating_diff" -> (row.home_sp_rating,
+    row.away_sp_rating). Every sport's features.py follows this
+    home_<base>/away_<base> naming convention (elo_diff is the one
+    exception: the raw columns are home_pregame_elo/away_pregame_elo).
+    Returns None for features with no home/away split (closing_spread,
+    neutral_site, ...) -- those are single shared values, not a comparison."""
+    if not feature.endswith("_diff"):
+        return None
+    base = feature[: -len("_diff")]
+    home_col, away_col = (
+        ("home_pregame_elo", "away_pregame_elo") if base == "elo" else (f"home_{base}", f"away_{base}")
+    )
+    if home_col not in row.index or away_col not in row.index:
+        return None
+    return row[home_col], row[away_col]
+
+
 def fit_xgb_classifier(X_train, y_train) -> XGBClassifier:
     clf = XGBClassifier(
         n_estimators=300,

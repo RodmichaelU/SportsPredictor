@@ -13,7 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import numpy as np
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from src import models, predict, store
@@ -150,4 +150,128 @@ def get_model_weights(sport: str = "cfb"):
         "model_version": predict.MODEL_VERSION,
         "trained_on_games": len(df),
         "weights": weights,
+    }
+
+
+def _fmt(value: float) -> str:
+    return f"{value:.0f}" if abs(value) >= 10 else f"{value:.2f}"
+
+
+def _is_missing(value) -> bool:
+    return value is None or (isinstance(value, float) and np.isnan(value))
+
+
+def _feature_detail_line(feature: str, label: str, home_team: str, away_team: str, game_row) -> str:
+    if feature == "closing_spread":
+        spread = game_row.get("closing_spread")
+        if _is_missing(spread):
+            return "No line available"
+        favored = home_team if spread < 0 else away_team
+        return f"{favored} favored by {abs(spread):.1f} points"
+    if feature in ("neutral_site", "conference_game", "div_game"):
+        return f"{label}: {'Yes' if game_row.get(feature) else 'No'}"
+
+    pair = models.raw_value_pair(feature, game_row)
+    if pair is None or any(_is_missing(v) for v in pair):
+        return f"{label}: not enough data yet for one or both teams"
+    home_val, away_val = pair
+    short_label = label.replace(" gap", "").replace(" (offense)", "").replace(" (defense)", "")
+    return f"{short_label}: {home_team} {_fmt(home_val)} vs {away_team} {_fmt(away_val)}"
+
+
+@app.get("/explain")
+def get_explain(sport: str = "cfb", game_id: str = Query(...)):
+    """Per-game breakdown of a frozen prediction, grouped by feature family
+    (api/../src/sports/<sport>/features.py's FEATURE_GROUPS).
+
+    Since the win-probability model is logistic regression, each feature's
+    contribution to the predicted log-odds is exact -- they sum to the
+    actual prediction, unlike SHAP-style approximations for nonlinear
+    models. But several of these features are correlated with each other
+    (e.g. CFB's SP+ overall/offense/defense ratings), and a correlated
+    input's individual coefficient can point the opposite way you'd
+    naively expect (more offense intuitively helps, but SP+ offense's
+    global weight is negative once SP+ overall is also in the model) even
+    though the total is still correct. Grouping correlated families into
+    one net number sidesteps that: the combined effect of "SP+ ratings" as
+    a whole is far more likely to match intuition than any one collinear
+    sub-term."""
+    conn = store.get_connection()
+    row = conn.execute(
+        "SELECT * FROM predictions WHERE sport = ? AND game_id = ?", (sport, game_id)
+    ).fetchone()
+    conn.close()
+    if row is None:
+        raise HTTPException(status_code=404, detail="No prediction on record for this game")
+
+    features = registry.features_module(sport)
+    # hit IS NULL only means "reconcile.py hasn't scored this yet", not "the
+    # game hasn't been played" -- a game can finish in the real world before
+    # we get around to running reconcile.py for that sport. Try the
+    # not-yet-played path first (cheap, and correct for the common case),
+    # then fall back to rebuilding from the season's historical features
+    # (which works once the game has a final score) if the game isn't found
+    # there.
+    game_table = features.build_upcoming_features(row["season"], row["week"])
+    if not game_table.empty:
+        game_table = game_table[game_table["game_id"].astype(str) == game_id]
+    if game_table.empty:
+        game_table = features.build_season_features(row["season"])
+        game_table = game_table[game_table["game_id"].astype(str) == game_id]
+    if game_table.empty:
+        raise HTTPException(status_code=404, detail="Could not rebuild features for this game")
+    game_row = features.add_model_features(game_table).iloc[0]
+
+    history = features.load_feature_table()
+    pipeline = models.fit_logistic(history[features.FEATURE_COLUMNS], history["home_win"])
+    result = models.logistic_contributions(
+        pipeline, features.FEATURE_COLUMNS, game_row[features.FEATURE_COLUMNS].to_frame().T
+    )
+    contributions = result["contributions"]
+
+    labels = getattr(features, "FEATURE_LABELS", {})
+    home_team, away_team = row["home_team"], row["away_team"]
+
+    groups = []
+    for group in features.FEATURE_GROUPS:
+        group_contribution = sum(contributions[f] for f in group["features"])
+        details = [
+            _feature_detail_line(f, labels.get(f, f), home_team, away_team, game_row)
+            for f in group["features"]
+        ]
+        # The betting market has an objective, external meaning independent
+        # of this model (a -3 spread means the home team is favored, full
+        # stop), unlike the other groups where "favors" only ever meant
+        # "this model's contribution leans that way." Standardized
+        # coefficients are centered on the training data's *average* spread
+        # (a fairly steep favorite, since CFB schedules include lots of
+        # blowout non-conference games) -- so a modest favorite can show a
+        # negative contribution purely for being a weaker favorite than
+        # usual, which would read as a flat contradiction against the
+        # spread shown right next to it. Use the spread's own sign here.
+        if group["key"] == "market" and not _is_missing(game_row.get("closing_spread")):
+            favored_team = home_team if game_row["closing_spread"] < 0 else away_team
+        else:
+            favored_team = home_team if group_contribution >= 0 else away_team
+
+        groups.append(
+            {
+                "key": group["key"],
+                "label": group["label"],
+                "contribution": group_contribution,
+                "favored_team": favored_team,
+                "details": details,
+            }
+        )
+    groups.sort(key=lambda g: -abs(g["contribution"]))
+
+    return {
+        "sport": sport,
+        "game_id": game_id,
+        "home_team": home_team,
+        "away_team": away_team,
+        "predicted_winner": row["predicted_winner"],
+        "win_probability": row["home_win_prob"],
+        "model_version": row["model_version"],
+        "groups": groups,
     }

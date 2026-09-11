@@ -51,3 +51,22 @@ export interface ModelWeights {
   trained_on_games: number;
   weights: FeatureWeight[]; // sorted by |weight| descending
 }
+
+export interface ExplanationGroup {
+  key: string;
+  label: string;
+  contribution: number; // signed; >=0 favors home_team, <0 favors away_team
+  favored_team: string;
+  details: string[]; // human-readable supporting lines, e.g. raw stat comparisons
+}
+
+export interface Explanation {
+  sport: string;
+  game_id: string;
+  home_team: string;
+  away_team: string;
+  predicted_winner: string;
+  win_probability: number;
+  model_version: string;
+  groups: ExplanationGroup[]; // sorted by |contribution| descending
+}

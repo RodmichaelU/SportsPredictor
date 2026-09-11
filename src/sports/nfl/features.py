@@ -38,6 +38,19 @@ FEATURE_LABELS = {
     "div_game": "Division game",
 }
 
+# Groups for the per-game explanation view (api/main.py's /explain). NFL's
+# feature set is small enough that nothing needs combining the way CFB's
+# correlated SP+/rolling-stat families do -- each group here is one feature,
+# except game context, grouped with CFB's presentation for consistency.
+FEATURE_GROUPS = [
+    {"key": "market", "label": "Betting market", "features": ["closing_spread"]},
+    {"key": "elo", "label": "Elo rating", "features": ["elo_diff"]},
+    {"key": "offense_epa", "label": "Offensive EPA/play", "features": ["off_epa_diff"]},
+    {"key": "defense_epa", "label": "Defensive EPA/play allowed", "features": ["def_epa_allowed_diff"]},
+    {"key": "rest", "label": "Rest days", "features": ["rest_days_diff"]},
+    {"key": "context", "label": "Game context", "features": ["neutral_site", "div_game"]},
+]
+
 
 def _team_game_stats_frame(start_season: int, end_season: int) -> pd.DataFrame:
     """One row per team per game: this team's EPA/play, offense and defense

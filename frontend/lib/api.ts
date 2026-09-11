@@ -1,5 +1,5 @@
-import { MOCK_ACCURACY, MOCK_MODEL_WEIGHTS, MOCK_PREDICTIONS, MOCK_RESULTS, MOCK_SPORTS } from "./mockData";
-import { AccuracySummary, ModelWeights, Prediction, Result, Sport } from "./types";
+import { MOCK_ACCURACY, MOCK_EXPLANATION, MOCK_MODEL_WEIGHTS, MOCK_PREDICTIONS, MOCK_RESULTS, MOCK_SPORTS } from "./mockData";
+import { AccuracySummary, Explanation, ModelWeights, Prediction, Result, Sport } from "./types";
 
 // With NEXT_PUBLIC_API_URL unset, falls back to mock data (useful for UI
 // work without the backend running). Set it to point at api/main.py
@@ -49,6 +49,22 @@ export async function getAccuracy(sport: string): Promise<AccuracySummary> {
 export async function getModelWeights(sport: string): Promise<ModelWeights> {
   if (!API_BASE_URL) return { ...MOCK_MODEL_WEIGHTS, sport };
   return fetchJson<ModelWeights>(`/model-weights?sport=${sport}`);
+}
+
+export async function getExplanation(sport: string, gameId: string): Promise<Explanation> {
+  if (!API_BASE_URL) {
+    const game = [...MOCK_PREDICTIONS, ...MOCK_RESULTS].find((p) => p.game_id === gameId);
+    return {
+      ...MOCK_EXPLANATION,
+      sport,
+      game_id: gameId,
+      home_team: game?.home_team ?? MOCK_EXPLANATION.home_team,
+      away_team: game?.away_team ?? MOCK_EXPLANATION.away_team,
+      predicted_winner: game?.predicted_winner ?? MOCK_EXPLANATION.predicted_winner,
+      win_probability: game?.win_probability ?? MOCK_EXPLANATION.win_probability,
+    };
+  }
+  return fetchJson<Explanation>(`/explain?sport=${sport}&game_id=${encodeURIComponent(gameId)}`);
 }
 
 export const isLiveApi = Boolean(API_BASE_URL);

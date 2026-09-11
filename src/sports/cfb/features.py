@@ -60,6 +60,34 @@ FEATURE_LABELS = {
     "conference_game": "Conference game",
 }
 
+# Groups for the per-game explanation view (api/main.py's /explain). SP+
+# overall/offense/defense are correlated with each other (overall is roughly
+# a combination of the other two), and so are the four offensive and four
+# defensive rolling stats -- correlated inputs to a linear model can end up
+# with individual coefficients that point the "wrong" way (e.g. SP+ offense
+# gap has a *negative* global weight despite more offense intuitively
+# helping) even though the model's predictions are still correct overall.
+# Summing each family's contributions into one number is far more likely to
+# land on the intuitive direction than any single correlated sub-feature.
+FEATURE_GROUPS = [
+    {"key": "market", "label": "Betting market", "features": ["closing_spread"]},
+    {"key": "elo", "label": "Elo rating", "features": ["elo_diff"]},
+    {"key": "sp_plus", "label": "SP+ ratings", "features": ["sp_rating_diff", "sp_offense_diff", "sp_defense_diff"]},
+    {"key": "talent", "label": "Recruiting talent", "features": ["talent_diff"]},
+    {
+        "key": "offense_stats",
+        "label": "This season's offensive stats",
+        "features": ["off_ppa_diff", "off_success_rate_diff", "off_explosiveness_diff", "off_points_per_drive_diff"],
+    },
+    {
+        "key": "defense_stats",
+        "label": "This season's defensive stats",
+        "features": ["def_ppa_diff", "def_success_rate_diff", "def_explosiveness_diff", "def_points_per_drive_diff"],
+    },
+    {"key": "rest", "label": "Rest days", "features": ["rest_days_diff"]},
+    {"key": "context", "label": "Game context", "features": ["neutral_site", "conference_game"]},
+]
+
 
 def _games_frame(season: int) -> pd.DataFrame:
     games = ingest.ingest_games(season)

@@ -1,4 +1,4 @@
-import { AccuracySummary, ModelWeights, Prediction, Result, Sport } from "./types";
+import { AccuracySummary, Explanation, ModelWeights, Prediction, Result, Sport } from "./types";
 
 // Placeholder data shaped like the real Phase 6 API responses will be, so the
 // UI can be built and reviewed before the CFBD-backed pipeline exists.
@@ -204,5 +204,80 @@ export const MOCK_MODEL_WEIGHTS: ModelWeights = {
     { feature: "talent_diff", label: "Recruiting talent composite gap", weight: 0.055 },
     { feature: "rest_days_diff", label: "Rest days gap", weight: 0.016 },
     { feature: "neutral_site", label: "Neutral site game", weight: 0.002 },
+  ],
+};
+
+export const MOCK_EXPLANATION: Explanation = {
+  sport: "cfb",
+  game_id: "mock-game",
+  home_team: "Alabama",
+  away_team: "Georgia",
+  predicted_winner: "Georgia",
+  win_probability: 0.42,
+  model_version: MODEL_VERSION,
+  groups: [
+    {
+      key: "market",
+      label: "Betting market",
+      contribution: -0.58,
+      favored_team: "Georgia",
+      details: ["Georgia favored by 3.5 points"],
+    },
+    {
+      key: "sp_plus",
+      label: "SP+ ratings",
+      contribution: -0.31,
+      favored_team: "Georgia",
+      details: [
+        "SP+ overall rating: Alabama 24 vs Georgia 30",
+        "SP+ offense rating: Alabama 34 vs Georgia 31",
+        "SP+ defense rating: Alabama 12 vs Georgia 8",
+      ],
+    },
+    {
+      key: "elo",
+      label: "Elo rating",
+      contribution: -0.19,
+      favored_team: "Georgia",
+      details: ["Elo rating: Alabama 1780 vs Georgia 1865"],
+    },
+    {
+      key: "defense_stats",
+      label: "This season's defensive stats",
+      contribution: 0.12,
+      favored_team: "Alabama",
+      details: [
+        "Defensive EPA/play allowed: Alabama 0.08 vs Georgia 0.14",
+        "Points per drive allowed: Alabama 1.6 vs Georgia 1.9",
+      ],
+    },
+    {
+      key: "offense_stats",
+      label: "This season's offensive stats",
+      contribution: 0.07,
+      favored_team: "Alabama",
+      details: ["Offensive EPA/play: Alabama 0.31 vs Georgia 0.27"],
+    },
+    {
+      key: "talent",
+      label: "Recruiting talent",
+      contribution: -0.05,
+      favored_team: "Georgia",
+      details: ["Recruiting talent composite: Alabama 920 vs Georgia 960"],
+    },
+    {
+      key: "rest",
+      label: "Rest days",
+      contribution: 0.01,
+      favored_team: "Alabama",
+      details: ["Rest days: Alabama 7.00 vs Georgia 6.00"],
+    },
+    {
+      key: "context",
+      label: "Game context",
+      contribution: 0.0,
+      favored_team: "Alabama",
+      details: ["Neutral site game: No", "Conference game: Yes"],
+    },
   ],
 };

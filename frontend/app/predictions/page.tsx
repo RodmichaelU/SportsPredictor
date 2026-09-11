@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getPredictions, getSports } from "@/lib/api";
 import ConfidenceBar from "@/components/ConfidenceBar";
 import { formatGameDate, formatMargin, pickConfidence } from "@/lib/format";
@@ -29,6 +30,7 @@ export default async function PredictionsPage(props: PageProps<"/predictions">) 
                 <th className="px-4 py-3 font-medium">Pick</th>
                 <th className="px-4 py-3 font-medium">Margin</th>
                 <th className="px-4 py-3 font-medium">Confidence</th>
+                <th className="px-4 py-3 font-medium"></th>
               </tr>
             </thead>
             <tbody>
@@ -47,6 +49,14 @@ export default async function PredictionsPage(props: PageProps<"/predictions">) 
                   </td>
                   <td className="px-4 py-3">
                     <ConfidenceBar confidence={pickConfidence(p)} />
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <Link
+                      href={`/games/${p.game_id}?sport=${sport}`}
+                      className="text-xs font-medium text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
+                    >
+                      Why? →
+                    </Link>
                   </td>
                 </tr>
               ))}
