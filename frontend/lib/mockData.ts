@@ -1,4 +1,4 @@
-import { AccuracySummary, Explanation, ModelWeights, Prediction, Result, Sport } from "./types";
+import { AccuracySummary, CurveTarget, Explanation, ModelCurve, ModelWeights, Prediction, Result, Sport } from "./types";
 
 // Placeholder data shaped like the real Phase 6 API responses will be, so the
 // UI can be built and reviewed before the CFBD-backed pipeline exists.
@@ -281,3 +281,26 @@ export const MOCK_EXPLANATION: Explanation = {
     },
   ],
 };
+
+// Synthetic sigmoid (win) / straight line (margin) so the curve view has
+// something reasonable to render without the backend running. Not real
+// model output -- just illustrative shapes.
+export function mockModelCurve(sport: string, feature: string, target: CurveTarget): ModelCurve {
+  const n = 30;
+  const xs = Array.from({ length: n }, (_, i) => -600 + (1200 * i) / (n - 1));
+  const curve =
+    target === "win"
+      ? xs.map((x) => ({ x, y: 1 / (1 + Math.exp(-x / 200)) }))
+      : xs.map((x) => ({ x, y: x / 20 }));
+
+  const scatter = Array.from({ length: 120 }, () => {
+    const x = -600 + Math.random() * 1200;
+    if (target === "win") {
+      const p = 1 / (1 + Math.exp(-x / 200));
+      return { x, y: (Math.random() < p ? 1 : 0) + (Math.random() - 0.5) * 0.08 };
+    }
+    return { x, y: x / 20 + (Math.random() - 0.5) * 20 };
+  });
+
+  return { sport, feature, label: feature.replace(/_/g, " "), target, curve, scatter };
+}

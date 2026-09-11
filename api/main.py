@@ -153,6 +153,41 @@ def get_model_weights(sport: str = "cfb"):
     }
 
 
+@app.get("/model-curve")
+def get_model_curve(sport: str = "cfb", feature: str = Query(...), target: str = "win"):
+    """Partial-dependence curve for one feature: the model's actual
+    prediction as that feature sweeps across its observed range, every
+    other feature held at its historical median, plus a sample of real
+    historical data points for context. target="win" traces the logistic
+    regression's sigmoid; target="margin" traces the ridge regressor's
+    line (genuinely linear, since ridge is a linear model)."""
+    features = registry.features_module(sport)
+    if feature not in features.FEATURE_COLUMNS:
+        raise HTTPException(status_code=404, detail=f"Unknown feature: {feature}")
+
+    df = features.load_feature_table()
+
+    if target == "margin":
+        pipeline = models.fit_ridge(df[features.FEATURE_COLUMNS], df["margin"])
+        scatter_target, jitter = "margin", False
+    else:
+        pipeline = models.fit_logistic(df[features.FEATURE_COLUMNS], df["home_win"])
+        scatter_target, jitter = "home_win", True
+
+    curve = models.partial_dependence_curve(pipeline, features.FEATURE_COLUMNS, df, feature)
+    scatter = models.scatter_sample(df, feature, scatter_target, jitter=jitter)
+
+    labels = getattr(features, "FEATURE_LABELS", {})
+    return {
+        "sport": sport,
+        "feature": feature,
+        "label": labels.get(feature, feature),
+        "target": target,
+        "curve": curve,
+        "scatter": scatter,
+    }
+
+
 def _fmt(value: float) -> str:
     return f"{value:.0f}" if abs(value) >= 10 else f"{value:.2f}"
 

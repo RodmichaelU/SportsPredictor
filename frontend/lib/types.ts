@@ -70,3 +70,19 @@ export interface Explanation {
   model_version: string;
   groups: ExplanationGroup[]; // sorted by |contribution| descending
 }
+
+export interface CurvePoint {
+  x: number;
+  y: number;
+}
+
+export type CurveTarget = "win" | "margin";
+
+export interface ModelCurve {
+  sport: string;
+  feature: string;
+  label: string;
+  target: CurveTarget;
+  curve: CurvePoint[]; // the fitted model's prediction as `feature` sweeps its range, others held at median
+  scatter: CurvePoint[]; // a sample of real historical (feature, actual outcome) points
+}

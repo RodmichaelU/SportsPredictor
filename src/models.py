@@ -14,6 +14,7 @@ Run: python -m src.models [--sport cfb] [--test-season YEAR]
 import argparse
 
 import numpy as np
+import pandas as pd
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression, RidgeCV
 from sklearn.metrics import (
@@ -101,6 +102,47 @@ def raw_value_pair(feature: str, row) -> tuple | None:
     if home_col not in row.index or away_col not in row.index:
         return None
     return row[home_col], row[away_col]
+
+
+def partial_dependence_curve(pipeline, feature_columns: list, history_df, feature: str, n_points: int = 40) -> list:
+    """The model's actual prediction as `feature` sweeps across its observed
+    range, with every other feature held at its historical median -- the
+    standard "partial dependence" way to show one input's effect in
+    isolation from a multi-feature model. For logistic regression this
+    traces the real sigmoid curve (via predict_proba); for a regressor
+    (ridge) it traces a genuine straight line, since ridge is linear.
+    Trimmed to the 2nd-98th percentile of observed values so a couple of
+    extreme outliers don't stretch the whole axis."""
+    medians = history_df[feature_columns].median()
+    lo, hi = history_df[feature].quantile([0.02, 0.98])
+    xs = np.linspace(lo, hi, n_points)
+
+    rows = pd.DataFrame([medians.to_dict()] * n_points)
+    rows[feature] = xs
+
+    clf = pipeline.named_steps.get("clf")
+    if clf is not None and hasattr(clf, "predict_proba"):
+        ys = pipeline.predict_proba(rows[feature_columns])[:, 1]
+    else:
+        ys = pipeline.predict(rows[feature_columns])
+
+    return [{"x": float(x), "y": float(y)} for x, y in zip(xs, ys)]
+
+
+def scatter_sample(df, feature: str, target: str, n: int = 400, jitter: bool = False, seed: int = 0) -> list:
+    """A capped random sample of (feature, target) pairs for a chart --
+    CFB's ~7,900 training rows is too many points to ship to a browser and
+    would just overplot anyway. `jitter` nudges a 0/1 classification target
+    vertically so overlapping points at y=0 and y=1 are visible as a cloud
+    rather than a single flat line."""
+    rows = df[[feature, target]].dropna()
+    if len(rows) > n:
+        rows = rows.sample(n, random_state=seed)
+    rng = np.random.default_rng(seed)
+    y_values = rows[target].to_numpy(dtype=float)
+    if jitter:
+        y_values = y_values + rng.uniform(-0.04, 0.04, size=len(y_values))
+    return [{"x": float(x), "y": float(y)} for x, y in zip(rows[feature], y_values)]
 
 
 def fit_xgb_classifier(X_train, y_train) -> XGBClassifier:
