@@ -5,10 +5,10 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { Sport } from "@/lib/types";
 
 function linkClass(active: boolean) {
-  return `rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
+  return `border-b-2 pb-0.5 text-sm font-medium transition-colors ${
     active
-      ? "bg-indigo-600 text-white"
-      : "text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+      ? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400"
+      : "border-transparent text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
   }`;
 }
 
@@ -19,7 +19,7 @@ export default function LeagueNav({ sports }: { sports: Sport[] }) {
   const onHome = pathname === "/";
 
   return (
-    <nav className="flex flex-wrap items-center gap-1">
+    <nav className="flex flex-wrap items-center gap-5">
       <Link href="/" className={linkClass(onHome)}>
         Home
       </Link>

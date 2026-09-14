@@ -3,7 +3,8 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import { getSports } from "@/lib/api";
-import HeaderControls from "@/components/HeaderControls";
+import LeagueNav from "@/components/LeagueNav";
+import SecondaryNav from "@/components/SecondaryNav";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -38,10 +39,13 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               </span>
               <span className="text-lg font-semibold tracking-tight">Sports Predictor</span>
             </Link>
-            <Suspense fallback={<div className="h-9" />}>
-              <HeaderControls sports={sports} />
+            <Suspense fallback={<div className="h-5 w-56" />}>
+              <LeagueNav sports={sports} />
             </Suspense>
           </div>
+          <Suspense fallback={null}>
+            <SecondaryNav />
+          </Suspense>
         </header>
         <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">{children}</main>
         <footer className="border-t border-neutral-200 px-6 py-6 text-center text-xs text-neutral-400 dark:border-neutral-800">
