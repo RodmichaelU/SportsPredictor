@@ -2,10 +2,12 @@ export default function ProbabilityDuel({
   homeTeam,
   awayTeam,
   winProbability, // home team's win probability, 0-1
+  caption = "Win probability, as of when this prediction was frozen",
 }: {
   homeTeam: string;
   awayTeam: string;
   winProbability: number;
+  caption?: string;
 }) {
   const homePct = Math.round(winProbability * 100);
   const awayPct = 100 - homePct;
@@ -30,9 +32,7 @@ export default function ProbabilityDuel({
           {homePct >= 12 && `${homePct}%`}
         </div>
       </div>
-      <div className="text-center text-xs text-neutral-500">
-        Win probability, as of when this prediction was frozen
-      </div>
+      <div className="text-center text-xs text-neutral-500">{caption}</div>
     </div>
   );
 }

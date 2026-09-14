@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getPredictions, getSports } from "@/lib/api";
 import ConfidenceBar from "@/components/ConfidenceBar";
-import { formatGameDate, formatMargin, pickConfidence } from "@/lib/format";
+import { formatGameDate, formatMargin, formatPercent, marketConfidence, pickConfidence } from "@/lib/format";
 
 export default async function PredictionsPage(props: PageProps<"/predictions">) {
   const searchParams = await props.searchParams;
@@ -30,6 +30,7 @@ export default async function PredictionsPage(props: PageProps<"/predictions">) 
                 <th className="px-4 py-3 font-medium">Pick</th>
                 <th className="px-4 py-3 font-medium">Margin</th>
                 <th className="px-4 py-3 font-medium">Confidence</th>
+                <th className="px-4 py-3 font-medium">Market</th>
                 <th className="px-4 py-3 font-medium"></th>
               </tr>
             </thead>
@@ -49,6 +50,9 @@ export default async function PredictionsPage(props: PageProps<"/predictions">) 
                   </td>
                   <td className="px-4 py-3">
                     <ConfidenceBar confidence={pickConfidence(p)} />
+                  </td>
+                  <td className="px-4 py-3 tabular-nums text-neutral-500">
+                    {marketConfidence(p) !== null ? formatPercent(marketConfidence(p)!) : "—"}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <Link

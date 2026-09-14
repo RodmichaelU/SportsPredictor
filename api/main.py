@@ -19,6 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src import models, predict, store
 from src.evaluate import expected_calibration_error
 from src.models import classification_metrics
+from src.odds import kalshi
 from src.sports import registry
 
 app = FastAPI(title="SportsPredictor API")
@@ -36,7 +37,7 @@ SPORTS = [
 ]
 
 
-def _prediction_dict(row) -> dict:
+def _prediction_dict(row, market: dict | None = None) -> dict:
     return {
         "game_id": str(row["game_id"]),
         "sport": row["sport"],
@@ -50,6 +51,7 @@ def _prediction_dict(row) -> dict:
         "predicted_winner": row["predicted_winner"],
         "predicted_margin": row["predicted_margin"],
         "model_version": row["model_version"],
+        "market_home_probability": market["home_probability"] if market else None,
     }
 
 
@@ -83,7 +85,19 @@ def get_predictions(sport: str = "cfb", week: int | None = Query(default=None)):
     query += " ORDER BY game_date"
     rows = conn.execute(query, params).fetchall()
     conn.close()
-    return [_prediction_dict(r) for r in rows]
+
+    # Fetch Kalshi's open markets once per request and match every row
+    # against that same index, rather than one HTTP round-trip per game.
+    # Best-effort: a Kalshi outage shouldn't take the whole endpoint down.
+    try:
+        market_index = kalshi.build_index(sport)
+    except Exception:
+        market_index = {}
+
+    return [
+        _prediction_dict(r, kalshi.match_game(sport, r["home_team"], r["away_team"], market_index))
+        for r in rows
+    ]
 
 
 @app.get("/results")
@@ -300,6 +314,11 @@ def get_explain(sport: str = "cfb", game_id: str = Query(...)):
         )
     groups.sort(key=lambda g: -abs(g["contribution"]))
 
+    try:
+        market = kalshi.match_game(sport, home_team, away_team, kalshi.build_index(sport))
+    except Exception:
+        market = None
+
     return {
         "sport": sport,
         "game_id": game_id,
@@ -309,4 +328,5 @@ def get_explain(sport: str = "cfb", game_id: str = Query(...)):
         "win_probability": row["home_win_prob"],
         "model_version": row["model_version"],
         "groups": groups,
+        "market_home_probability": market["home_probability"] if market else None,
     }

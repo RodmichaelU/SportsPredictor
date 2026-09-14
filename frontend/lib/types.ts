@@ -19,6 +19,11 @@ export interface Prediction {
   predicted_winner: string;
   predicted_margin: number; // predicted home score minus away score
   model_version: string;
+  // Live home-team win probability from Kalshi (a real-money prediction
+  // market), matched by team name -- null if no open Kalshi market was
+  // found for this game. Only populated for upcoming games; already-decided
+  // games don't have a live market to compare against.
+  market_home_probability: number | null;
 }
 
 export interface Result extends Prediction {
@@ -69,6 +74,7 @@ export interface Explanation {
   win_probability: number;
   model_version: string;
   groups: ExplanationGroup[]; // sorted by |contribution| descending
+  market_home_probability: number | null; // live Kalshi price, null if no market matched
 }
 
 export interface CurvePoint {

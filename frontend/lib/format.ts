@@ -1,9 +1,22 @@
 import { Prediction } from "./types";
 
-// win_probability is always the home team's win probability; convert it to
-// "confidence in the pick" so the UI can show one number per game.
+// A home-team win probability, converted to "confidence in the pick" --
+// one number per game regardless of which side was predicted. Shared by our
+// own win_probability and by market_home_probability (Kalshi), so both are
+// directly comparable in the same units.
+function confidenceForHomeProbability(homeTeam: string, predictedWinner: string, homeProbability: number): number {
+  return predictedWinner === homeTeam ? homeProbability : 1 - homeProbability;
+}
+
 export function pickConfidence(p: Pick<Prediction, "home_team" | "predicted_winner" | "win_probability">): number {
-  return p.predicted_winner === p.home_team ? p.win_probability : 1 - p.win_probability;
+  return confidenceForHomeProbability(p.home_team, p.predicted_winner, p.win_probability);
+}
+
+export function marketConfidence(
+  p: Pick<Prediction, "home_team" | "predicted_winner" | "market_home_probability">
+): number | null {
+  if (p.market_home_probability === null) return null;
+  return confidenceForHomeProbability(p.home_team, p.predicted_winner, p.market_home_probability);
 }
 
 export function formatPercent(value: number): string {

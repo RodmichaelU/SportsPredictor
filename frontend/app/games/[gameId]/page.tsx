@@ -30,11 +30,26 @@ export default async function GameExplanationPage(props: PageProps<"/games/[game
       </div>
 
       <div className="rounded-lg border border-neutral-200 p-5 dark:border-neutral-800">
+        <div className="mb-1 text-xs font-medium tracking-wide text-neutral-400 uppercase">Our prediction</div>
         <ProbabilityDuel
           homeTeam={data.home_team}
           awayTeam={data.away_team}
           winProbability={data.win_probability}
         />
+
+        {data.market_home_probability !== null && (
+          <>
+            <div className="mt-5 mb-1 border-t border-neutral-100 pt-5 text-xs font-medium tracking-wide text-neutral-400 uppercase dark:border-neutral-800">
+              Live market (Kalshi)
+            </div>
+            <ProbabilityDuel
+              homeTeam={data.home_team}
+              awayTeam={data.away_team}
+              winProbability={data.market_home_probability}
+              caption="Live implied probability from Kalshi's real-money prediction market"
+            />
+          </>
+        )}
       </div>
 
       <div>

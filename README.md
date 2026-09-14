@@ -37,6 +37,12 @@ python3 -m src.reconcile --sport nfl                            # score frozen p
 uvicorn api.main:app --port 8000                                # serve /sports /predictions /results /accuracy (all sports)
 ```
 
+## Live market odds
+
+`src/odds/kalshi.py` pulls live prices from [Kalshi](https://kalshi.com), a CFTC-regulated real-money prediction market with a free, public, no-API-key REST API and individual game markets for both leagues. Matched to our games by team name/abbreviation (crosswalk + alias table in that file, verified against live data while building it). Shown as the "Market" column on `/predictions` and a live comparison bar on each game's `/games/[id]` page -- gracefully absent (never an error) when a game has no open Kalshi market, e.g. once it's finished and the market has settled.
+
+bet365 and similar bookmakers have no public API and weren't scraped; Polymarket's sports coverage is mostly futures markets (Super Bowl winner, etc.), not individual weekly games, so it wasn't used either.
+
 ## Frontend
 
 See [frontend/README.md](frontend/README.md). Requires Node 20.9+ (`brew install node@20`, since it's newer than most system defaults).
