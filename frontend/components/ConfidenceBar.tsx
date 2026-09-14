@@ -6,7 +6,7 @@ export default function ConfidenceBar({ confidence }: { confidence: number }) {
     <div className="flex items-center gap-2">
       <div className="h-1.5 w-16 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
         <div
-          className="h-full rounded-full bg-neutral-900 dark:bg-white"
+          className="h-full rounded-full bg-indigo-600 dark:bg-indigo-500"
           style={{ width: `${pct}%` }}
         />
       </div>

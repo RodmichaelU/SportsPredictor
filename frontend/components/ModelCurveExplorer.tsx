@@ -57,7 +57,7 @@ export default function ModelCurveExplorer({
               onClick={() => setTarget(t)}
               className={`rounded px-3 py-1 font-medium transition-colors ${
                 target === t
-                  ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900"
+                  ? "bg-indigo-600 text-white"
                   : "text-neutral-600 dark:text-neutral-300"
               }`}
             >

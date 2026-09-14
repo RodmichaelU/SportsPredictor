@@ -14,6 +14,8 @@ export default function NavTabs() {
   const searchParams = useSearchParams();
   const query = searchParams.toString();
 
+  if (pathname === "/") return null;
+
   return (
     <nav className="flex gap-1">
       {TABS.map((tab) => {
@@ -24,7 +26,7 @@ export default function NavTabs() {
             href={query ? `${tab.href}?${query}` : tab.href}
             className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
               active
-                ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900"
+                ? "bg-indigo-600 text-white"
                 : "text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
             }`}
           >
