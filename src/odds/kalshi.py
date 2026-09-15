@@ -12,6 +12,16 @@ open games at a time, team names spelled out e.g. "Stanford wins", close
 but not identical to CFBD's naming -- "App State" vs "Appalachian St.",
 "San José State" vs "San Jose St.", etc.).
 
+KXNBAGAME and KXNHLGAME also exist (confirmed live) but aren't wired into
+match_game() yet -- there's no sport features.py for either league yet to
+call it from (see src/sports/nba/features.py and .../nhl/features.py), and
+NHL had zero open markets when checked (offseason; the season starts in
+October, so this wasn't a lookup mistake). A spot check of NBA's open
+tickers found clean matches against nba_api's team abbreviations (BOS, DET,
+NYK, OKC, PHI, SAS all matched directly) -- promising, but not verified to
+the same depth as NFL/CFB's alias tables above, which were built by diffing
+the *complete* team lists, not a small sample.
+
 Docs: https://docs.kalshi.com
 """
 
@@ -22,13 +32,28 @@ import requests
 
 BASE_URL = "https://api.elections.kalshi.com/trade-api/v2"
 
-SERIES_TICKER = {"cfb": "KXNCAAFGAME", "nfl": "KXNFLGAME"}
+SERIES_TICKER = {"cfb": "KXNCAAFGAME", "nfl": "KXNFLGAME", "nba": "KXNBAGAME", "nhl": "KXNHLGAME"}
+
+# Sports whose Kalshi tickers end in a short team code (vs. CFB, which
+# spells the team name out in yes_sub_title -- see _normalize_cfb_name).
+CODE_BASED_SPORTS = {"nfl", "nba", "nhl"}
 
 # Kalshi's ticker code -> nflreadpy's team_abbr. Verified by diffing the full
 # set of both. LA is nflreadpy's current code for the Rams (not LAR, despite
 # LAR also existing in its historical team list) -- confirmed by an actual
 # match failure against a real Rams game while building this, not assumed.
 NFL_CODE_ALIASES = {"JAC": "JAX", "LAR": "LA"}
+
+# NBA/NHL equivalents of NFL_CODE_ALIASES: Kalshi's ticker code -> our own
+# ingest.py's team code. Empty for now -- only spot-checked (a handful of
+# NBA tickers matched nba_api's codes directly), not verified against the
+# complete team lists the way NFL_CODE_ALIASES was. Fill in during the full
+# build the same way: diff every Kalshi code against ingest.py's team list
+# and add whatever doesn't match.
+NBA_CODE_ALIASES: dict[str, str] = {}
+NHL_CODE_ALIASES: dict[str, str] = {}
+
+_CODE_ALIASES = {"nfl": NFL_CODE_ALIASES, "nba": NBA_CODE_ALIASES, "nhl": NHL_CODE_ALIASES}
 
 # Kalshi's team name (lowercased, as written before the generic " st." ->
 # " state" pass below) -> CFBD's team name (lowercased). Found by diffing
@@ -54,15 +79,15 @@ def _normalize_cfb_name(name: str) -> str:
 
 
 def _team_key_for_name(sport: str, team_name: str) -> str:
-    if sport == "nfl":
-        return NFL_CODE_ALIASES.get(team_name, team_name)
+    if sport in CODE_BASED_SPORTS:
+        return _CODE_ALIASES[sport].get(team_name, team_name)
     return _normalize_cfb_name(team_name)
 
 
 def _team_key_for_market(sport: str, market: dict) -> str:
-    if sport == "nfl":
+    if sport in CODE_BASED_SPORTS:
         code = market["ticker"].rsplit("-", 1)[-1]
-        return NFL_CODE_ALIASES.get(code, code)
+        return _CODE_ALIASES[sport].get(code, code)
     return _normalize_cfb_name(market["yes_sub_title"])
 
 

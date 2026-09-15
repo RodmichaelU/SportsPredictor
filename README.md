@@ -4,6 +4,17 @@ ML-driven win probability and point margin predictions for American college foot
 
 Each sport is a self-contained adapter under `src/sports/<id>/` (`ingest.py` + `features.py`); `elo.py`, `models.py`, and `evaluate.py` are sport-agnostic and dispatch by a `--sport` flag through `src/sports/registry.py`. Adding a sport means writing a new adapter, not touching the model code.
 
+**Status per sport:**
+
+| Sport | `ingest.py` (`load_games`) | `features.py` | Live in the app |
+| --- | --- | --- | --- |
+| CFB (`cfb`) | ✅ | ✅ | ✅ |
+| NFL (`nfl`) | ✅ | ✅ | ✅ |
+| NBA (`nba`) | ✅ real, tested | ❌ documented stub | not yet (`api/main.py`'s `SPORTS` list doesn't include it) |
+| NHL (`nhl`) | ✅ real, tested | ❌ documented stub | not yet |
+
+NBA and NHL are **architecture-ready, not fully built**: `load_games()` is real (data source confirmed live -- `nba_api` for NBA, `api-web.nhle.com` for NHL, both free and keyless), so `python -m src.elo --sport nba` / `--sport nhl` already run end to end with real tuned constants. `features.py` for each is a documented stub that raises `NotImplementedError` with a checklist pointing at exactly what's needed -- read that file's module docstring before starting the next piece. `models.py`/`evaluate.py`/`predict.py`/`reconcile.py` will fail loudly (not silently) on `--sport nba`/`--sport nhl` until that's built; that's the intended signal, not a bug to fix around.
+
 ## Setup
 
 ```bash
@@ -35,6 +46,11 @@ python3 -m src.evaluate --sport nfl                             # calibration + 
 python3 -m src.predict --sport nfl --season 2026 --week 2      # freeze predictions for a week (never regenerated)
 python3 -m src.reconcile --sport nfl                            # score frozen predictions against final results
 uvicorn api.main:app --port 8000                                # serve /sports /predictions /results /accuracy (all sports)
+
+python3 -m src.sports.nba.ingest --start 2024 --end 2024        # nba: confirm load_games() works (no features.py yet)
+python3 -m src.elo --sport nba                                  # nba: real Elo baseline, tuned constants in ingest.py
+python3 -m src.sports.nhl.ingest --start 2024 --end 2024        # nhl: same, via api-web.nhle.com
+python3 -m src.elo --sport nhl
 ```
 
 ## Live market odds

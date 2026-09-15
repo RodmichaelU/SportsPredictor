@@ -12,11 +12,19 @@ Every sport's features module must expose:
     week, game_id, home_win, margin
   - build_features(start, end) -> DataFrame (for the CLI that writes the
     processed parquet)
+
+nba and nhl are architecture-ready, not fully built: their ingest.py's
+load_games() is real (so `--sport nba`/`--sport nhl` works for elo.py),
+but their features.py is a documented stub that raises NotImplementedError
+-- see the module docstring in either file for the checklist. That means
+models.py/evaluate.py/predict.py/reconcile.py will fail loudly and
+specifically for those two sports until features.py is built, which is
+the intended signal, not a bug.
 """
 
 import importlib
 
-SPORTS = ["cfb", "nfl"]
+SPORTS = ["cfb", "nfl", "nba", "nhl"]
 
 
 def ingest_module(sport: str):
