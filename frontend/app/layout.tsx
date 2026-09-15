@@ -5,6 +5,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { getSports } from "@/lib/api";
 import LeagueNav from "@/components/LeagueNav";
 import SecondaryNav from "@/components/SecondaryNav";
+import Logo from "@/components/Logo";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -34,9 +35,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <header className="sticky top-0 z-10 border-b border-neutral-200 bg-white/85 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/85">
           <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-3.5">
             <Link href="/" className="flex items-center gap-2.5">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 text-sm font-bold text-white">
-                SP
-              </span>
+              <Logo className="h-8 w-8" />
               <span className="text-lg font-semibold tracking-tight">Sports Predictor</span>
             </Link>
             <Suspense fallback={<div className="h-5 w-56" />}>
