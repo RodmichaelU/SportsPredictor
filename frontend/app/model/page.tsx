@@ -1,11 +1,18 @@
 import { getModelWeights, getSports } from "@/lib/api";
 import WeightBar from "@/components/WeightBar";
 import ModelCurveExplorer from "@/components/ModelCurveExplorer";
+import ComingSoon from "@/components/ComingSoon";
 
 export default async function ModelPage(props: PageProps<"/model">) {
   const searchParams = await props.searchParams;
   const sports = await getSports();
   const sport = (searchParams.sport as string) ?? sports[0]?.id ?? "cfb";
+  const sportInfo = sports.find((s) => s.id === sport);
+
+  if (sportInfo?.status === "coming_soon") {
+    return <ComingSoon sport={sportInfo} />;
+  }
+
   const data = await getModelWeights(sport);
 
   const maxAbsWeight = Math.max(...data.weights.map((w) => Math.abs(w.weight)), 0);

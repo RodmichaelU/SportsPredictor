@@ -1,11 +1,18 @@
 import { getAccuracy, getResults, getSports } from "@/lib/api";
 import AccuracyCard from "@/components/AccuracyCard";
 import ResultCard from "@/components/ResultCard";
+import ComingSoon from "@/components/ComingSoon";
 
 export default async function ResultsPage(props: PageProps<"/results">) {
   const searchParams = await props.searchParams;
   const sports = await getSports();
   const sport = (searchParams.sport as string) ?? sports[0]?.id ?? "cfb";
+  const sportInfo = sports.find((s) => s.id === sport);
+
+  if (sportInfo?.status === "coming_soon") {
+    return <ComingSoon sport={sportInfo} />;
+  }
+
   const [results, accuracy] = await Promise.all([getResults(sport), getAccuracy(sport)]);
 
   return (

@@ -4,6 +4,11 @@
 export interface Sport {
   id: string;
   name: string;
+  // "coming_soon" sports have a working data pipeline and Elo ratings but no
+  // trained model yet -- the frontend shows a placeholder instead of calling
+  // prediction endpoints that don't have data (or, for /model, don't exist
+  // yet) for them.
+  status: "live" | "coming_soon";
 }
 
 export interface Prediction {

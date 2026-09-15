@@ -1,11 +1,18 @@
 import Link from "next/link";
 import { getPredictions, getSports } from "@/lib/api";
 import PredictionCard from "@/components/PredictionCard";
+import ComingSoon from "@/components/ComingSoon";
 
 export default async function PredictionsPage(props: PageProps<"/predictions">) {
   const searchParams = await props.searchParams;
   const sports = await getSports();
   const sport = (searchParams.sport as string) ?? sports[0]?.id ?? "cfb";
+  const sportInfo = sports.find((s) => s.id === sport);
+
+  if (sportInfo?.status === "coming_soon") {
+    return <ComingSoon sport={sportInfo} />;
+  }
+
   const predictions = await getPredictions(sport);
 
   return (

@@ -32,8 +32,14 @@ app.add_middleware(
 )
 
 SPORTS = [
-    {"id": "cfb", "name": "College Football"},
-    {"id": "nfl", "name": "NFL"},
+    {"id": "cfb", "name": "College Football", "status": "live"},
+    {"id": "nfl", "name": "NFL", "status": "live"},
+    # Ingest + Elo are real and tested for these (src/sports/nba,
+    # src/sports/nhl); features.py -- the model layer -- is still a stub, so
+    # there's nothing to predict with yet. Listed here so the frontend can
+    # show them as placeholders rather than leaving them undiscoverable.
+    {"id": "nba", "name": "NBA", "status": "coming_soon"},
+    {"id": "nhl", "name": "NHL", "status": "coming_soon"},
 ]
 
 

@@ -3,7 +3,12 @@ import { AccuracySummary, CurveTarget, Explanation, ModelCurve, ModelWeights, Pr
 // Placeholder data shaped like the real Phase 6 API responses will be, so the
 // UI can be built and reviewed before the CFBD-backed pipeline exists.
 
-export const MOCK_SPORTS: Sport[] = [{ id: "cfb", name: "College Football" }];
+export const MOCK_SPORTS: Sport[] = [
+  { id: "cfb", name: "College Football", status: "live" },
+  { id: "nfl", name: "NFL", status: "live" },
+  { id: "nba", name: "NBA", status: "coming_soon" },
+  { id: "nhl", name: "NHL", status: "coming_soon" },
+];
 
 const MODEL_VERSION = "mock-v0";
 

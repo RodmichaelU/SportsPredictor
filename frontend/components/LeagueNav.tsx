@@ -27,9 +27,14 @@ export default function LeagueNav({ sports }: { sports: Sport[] }) {
         <Link
           key={sport.id}
           href={`/predictions?sport=${sport.id}`}
-          className={linkClass(!onHome && currentSport === sport.id)}
+          className={`inline-flex items-center gap-1.5 ${linkClass(!onHome && currentSport === sport.id)}`}
         >
           {sport.name}
+          {sport.status === "coming_soon" && (
+            <span className="rounded-full bg-neutral-100 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-neutral-500 uppercase dark:bg-neutral-800 dark:text-neutral-400">
+              Soon
+            </span>
+          )}
         </Link>
       ))}
     </nav>
