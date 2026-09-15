@@ -25,6 +25,13 @@ def _cache_key(endpoint: str, params: dict) -> str:
     return f"{safe_endpoint}__{digest}.json"
 
 
+def cache_file(endpoint: str, params: dict | None = None):
+    """The disk path a given request would be cached at -- exposed so
+    refresh.py can delete a specific in-progress season's cached responses
+    (forcing a live re-pull) without touching completed seasons."""
+    return config.RAW_DIR / _cache_key(endpoint, params or {})
+
+
 def get(endpoint: str, params: dict | None = None, max_retries: int = 3) -> object:
     """GET a CFBD endpoint, serving from disk cache when available.
 

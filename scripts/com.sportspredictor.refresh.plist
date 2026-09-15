@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.sportspredictor.refresh</string>
+
+    <!-- Inlined rather than pointing at scripts/refresh.sh: a script file
+         created by an editor/agent tool can pick up a macOS "provenance" tag
+         that blocks launchd (an unrelated process) from exec'ing it directly
+         -- /bin/bash itself carries no such tag, so invoking through -c
+         sidesteps that entirely. -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-c</string>
+        <string>cd "/Users/rj/Desktop/Side Projects/SportsPredictor" &amp;&amp; exec .venv/bin/python -m src.refresh --all</string>
+    </array>
+
+    <!-- Every 3 hours: frequent enough to catch newly-finished games same
+         day without burning meaningfully into CFBD's 1,000 calls/month
+         (each run costs ~5 CFB calls once the season's cache is busted). -->
+    <key>StartInterval</key>
+    <integer>10800</integer>
+
+    <!-- Also run once as soon as the agent is loaded, so `launchctl load`
+         doesn't leave a 3-hour wait before the first refresh. -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/rj/Desktop/Side Projects/SportsPredictor/data/logs/refresh.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/rj/Desktop/Side Projects/SportsPredictor/data/logs/refresh.log</string>
+</dict>
+</plist>

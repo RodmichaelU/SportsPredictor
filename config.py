@@ -21,7 +21,7 @@ PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
 # Default season range for historical ingestion. Adjust as data availability changes.
 START_SEASON = 2015
-CURRENT_SEASON = 2025
+CURRENT_SEASON = 2026
 
 # FBS only for v1.
 DIVISION = "fbs"
