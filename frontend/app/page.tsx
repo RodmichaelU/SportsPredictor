@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { getAccuracy, getModelCurve, getModelWeights, getSports } from "@/lib/api";
+import { getAccuracy, getModelCurve, getModelWeights, getPredictions, getSports } from "@/lib/api";
 import CurveChart from "@/components/CurveChart";
 import WeightBar from "@/components/WeightBar";
+import GameTicker from "@/components/GameTicker";
 
 function StepBadge({ n }: { n: number }) {
   return (
@@ -15,11 +16,12 @@ export default async function HomePage() {
   const sports = await getSports();
   const primarySport = sports.find((s) => s.id === "cfb")?.id ?? sports[0]?.id ?? "cfb";
 
-  const [weights, winCurve, marginCurve, accuracies] = await Promise.all([
+  const [weights, winCurve, marginCurve, accuracies, previewGames] = await Promise.all([
     getModelWeights(primarySport),
     getModelCurve(primarySport, "closing_spread", "win"),
     getModelCurve(primarySport, "closing_spread", "margin"),
     Promise.all(sports.map((s) => getAccuracy(s.id))),
+    getPredictions(primarySport),
   ]);
 
   const topWeights = weights.weights.slice(0, 6);
@@ -72,6 +74,15 @@ export default async function HomePage() {
             </div>
           )}
         </div>
+
+        {previewGames.length > 0 && (
+          <div className="mt-10">
+            <div className="mx-auto mb-2 w-max px-6 text-xs font-semibold tracking-wide text-neutral-400 uppercase">
+              This week&apos;s picks
+            </div>
+            <GameTicker predictions={previewGames.slice(0, 10)} sport={primarySport} />
+          </div>
+        )}
       </section>
 
       {/* How it works */}
