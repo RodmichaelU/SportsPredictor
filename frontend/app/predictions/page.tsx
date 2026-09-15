@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { getPredictions, getSports } from "@/lib/api";
-import ConfidenceBar from "@/components/ConfidenceBar";
-import { formatGameDate, formatMargin, formatPercent, marketConfidence, pickConfidence } from "@/lib/format";
+import PredictionCard from "@/components/PredictionCard";
 
 export default async function PredictionsPage(props: PageProps<"/predictions">) {
   const searchParams = await props.searchParams;
@@ -13,59 +12,30 @@ export default async function PredictionsPage(props: PageProps<"/predictions">) 
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold">Upcoming predictions</h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          Predictions are frozen before kickoff and never recomputed after the result is known.
+        <p className="mt-1 max-w-2xl text-sm text-neutral-500">
+          Predictions are frozen before kickoff and never recomputed after the result is known.{" "}
+          <span className="font-medium text-neutral-700 dark:text-neutral-300">Model</span> is our own
+          prediction, trained on each team&apos;s historical stats (
+          <Link
+            href={`/model?sport=${sport}`}
+            className="underline decoration-neutral-300 underline-offset-2 hover:text-indigo-600 dark:hover:text-indigo-400"
+          >
+            see how
+          </Link>
+          ).{" "}
+          <span className="font-medium text-neutral-700 dark:text-neutral-300">Market</span> is the live
+          price from Kalshi, a real-money prediction market -- real people trading real dollars on the
+          outcome, not another model.
         </p>
       </div>
 
       {predictions.length === 0 ? (
         <p className="text-sm text-neutral-500">No upcoming predictions for this sport yet.</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
-          <table className="w-full min-w-[640px] text-left text-sm">
-            <thead className="border-b border-neutral-200 bg-neutral-100/60 text-xs uppercase tracking-wide text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900/60">
-              <tr>
-                <th className="px-4 py-3 font-medium">Matchup</th>
-                <th className="px-4 py-3 font-medium">Kickoff</th>
-                <th className="px-4 py-3 font-medium">Pick</th>
-                <th className="px-4 py-3 font-medium">Margin</th>
-                <th className="px-4 py-3 font-medium">Confidence</th>
-                <th className="px-4 py-3 font-medium">Market</th>
-                <th className="px-4 py-3 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {predictions.map((p) => (
-                <tr
-                  key={p.game_id}
-                  className="border-b border-neutral-100 last:border-0 dark:border-neutral-900"
-                >
-                  <td className="px-4 py-3 font-medium">
-                    {p.away_team} @ {p.home_team}
-                  </td>
-                  <td className="px-4 py-3 text-neutral-500">{formatGameDate(p.game_date)}</td>
-                  <td className="px-4 py-3">{p.predicted_winner}</td>
-                  <td className="px-4 py-3 tabular-nums text-neutral-500">
-                    {formatMargin(p.predicted_margin)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <ConfidenceBar confidence={pickConfidence(p)} />
-                  </td>
-                  <td className="px-4 py-3 tabular-nums text-neutral-500">
-                    {marketConfidence(p) !== null ? formatPercent(marketConfidence(p)!) : "—"}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Link
-                      href={`/games/${p.game_id}?sport=${sport}`}
-                      className="text-xs font-medium text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
-                    >
-                      Why? →
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {predictions.map((p) => (
+            <PredictionCard key={p.game_id} prediction={p} sport={sport} />
+          ))}
         </div>
       )}
     </div>
