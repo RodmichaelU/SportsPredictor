@@ -1,5 +1,5 @@
-import { MOCK_ACCURACY, MOCK_EXPLANATION, mockModelCurve, MOCK_MODEL_WEIGHTS, MOCK_PREDICTIONS, MOCK_RESULTS, MOCK_SPORTS } from "./mockData";
-import { AccuracySummary, CurveTarget, Explanation, ModelCurve, ModelWeights, Prediction, Result, Sport } from "./types";
+import { MOCK_ACCURACY, MOCK_CALIBRATION, MOCK_EXPLANATION, mockModelCurve, MOCK_MODEL_WEIGHTS, MOCK_PREDICTIONS, MOCK_RESULTS, MOCK_SPORTS } from "./mockData";
+import { AccuracySummary, Calibration, CurveTarget, Explanation, ModelCurve, ModelWeights, Prediction, Result, Sport } from "./types";
 
 // With NEXT_PUBLIC_API_URL unset, falls back to mock data (useful for UI
 // work without the backend running). Set it to point at api/main.py
@@ -70,6 +70,11 @@ export async function getExplanation(sport: string, gameId: string): Promise<Exp
 export async function getModelCurve(sport: string, feature: string, target: CurveTarget): Promise<ModelCurve> {
   if (!API_BASE_URL) return mockModelCurve(sport, feature, target);
   return fetchJson<ModelCurve>(`/model-curve?sport=${sport}&feature=${feature}&target=${target}`);
+}
+
+export async function getCalibration(sport: string): Promise<Calibration> {
+  if (!API_BASE_URL) return { ...MOCK_CALIBRATION, sport };
+  return fetchJson<Calibration>(`/calibration?sport=${sport}`);
 }
 
 export const isLiveApi = Boolean(API_BASE_URL);

@@ -149,6 +149,49 @@ def get_accuracy(sport: str = "cfb"):
     }
 
 
+@app.get("/calibration")
+def get_calibration(sport: str = "cfb", n_bins: int = 10):
+    """Reliability-diagram data: split completed games into n_bins equal-width
+    buckets by predicted home win probability, and compare each bucket's
+    average prediction against its actual home win rate. A well-calibrated
+    model's points sit on the y=x diagonal -- e.g. games the model called
+    "70% likely" really should win about 70% of the time. Same 10-bin
+    definition as expected_calibration_error, which is why the single ECE
+    number on /accuracy and this chart always agree."""
+    conn = store.get_connection()
+    rows = conn.execute(
+        "SELECT home_win_prob, home_team, actual_winner FROM predictions WHERE sport = ? AND hit IS NOT NULL",
+        (sport,),
+    ).fetchall()
+    conn.close()
+
+    if not rows:
+        return {"sport": sport, "sample_size": 0, "bins": []}
+
+    y_true = np.array([int(r["actual_winner"] == r["home_team"]) for r in rows])
+    y_prob = np.array([r["home_win_prob"] for r in rows])
+
+    edges = np.linspace(0, 1, n_bins + 1)
+    bin_ids = np.clip(np.digitize(y_prob, edges) - 1, 0, n_bins - 1)
+
+    bins = []
+    for b in range(n_bins):
+        mask = bin_ids == b
+        if not mask.any():
+            continue
+        bins.append(
+            {
+                "bin_start": float(edges[b]),
+                "bin_end": float(edges[b + 1]),
+                "predicted_mean": float(y_prob[mask].mean()),
+                "actual_rate": float(y_true[mask].mean()),
+                "count": int(mask.sum()),
+            }
+        )
+
+    return {"sport": sport, "sample_size": len(rows), "bins": bins}
+
+
 @app.get("/model-weights")
 def get_model_weights(sport: str = "cfb"):
     """Standardized logistic regression coefficients -- what's actually

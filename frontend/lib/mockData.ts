@@ -1,4 +1,4 @@
-import { AccuracySummary, CurveTarget, Explanation, ModelCurve, ModelWeights, Prediction, Result, Sport } from "./types";
+import { AccuracySummary, Calibration, CurveTarget, Explanation, ModelCurve, ModelWeights, Prediction, Result, Sport } from "./types";
 
 // Placeholder data shaped like the real Phase 6 API responses will be, so the
 // UI can be built and reviewed before the CFBD-backed pipeline exists.
@@ -201,6 +201,22 @@ export const MOCK_ACCURACY: AccuracySummary = {
   log_loss: 0.612,
   brier_score: 0.211,
   ece: 0.045,
+};
+
+export const MOCK_CALIBRATION: Calibration = {
+  sport: "cfb",
+  sample_size: 240,
+  bins: [
+    { bin_start: 0.1, bin_end: 0.2, predicted_mean: 0.15, actual_rate: 0.18, count: 11 },
+    { bin_start: 0.2, bin_end: 0.3, predicted_mean: 0.26, actual_rate: 0.22, count: 14 },
+    { bin_start: 0.3, bin_end: 0.4, predicted_mean: 0.35, actual_rate: 0.31, count: 19 },
+    { bin_start: 0.4, bin_end: 0.5, predicted_mean: 0.46, actual_rate: 0.51, count: 26 },
+    { bin_start: 0.5, bin_end: 0.6, predicted_mean: 0.55, actual_rate: 0.58, count: 29 },
+    { bin_start: 0.6, bin_end: 0.7, predicted_mean: 0.64, actual_rate: 0.6, count: 31 },
+    { bin_start: 0.7, bin_end: 0.8, predicted_mean: 0.75, actual_rate: 0.7, count: 34 },
+    { bin_start: 0.8, bin_end: 0.9, predicted_mean: 0.85, actual_rate: 0.88, count: 40 },
+    { bin_start: 0.9, bin_end: 1.0, predicted_mean: 0.94, actual_rate: 0.93, count: 36 },
+  ],
 };
 
 export const MOCK_MODEL_WEIGHTS: ModelWeights = {

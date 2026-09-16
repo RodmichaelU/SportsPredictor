@@ -97,3 +97,17 @@ export interface ModelCurve {
   curve: CurvePoint[]; // the fitted model's prediction as `feature` sweeps its range, others held at median
   scatter: CurvePoint[]; // a sample of real historical (feature, actual outcome) points
 }
+
+export interface CalibrationBin {
+  bin_start: number;
+  bin_end: number;
+  predicted_mean: number; // average predicted home win probability in this bucket
+  actual_rate: number; // actual home win rate in this bucket
+  count: number;
+}
+
+export interface Calibration {
+  sport: string;
+  sample_size: number;
+  bins: CalibrationBin[]; // empty buckets omitted
+}
