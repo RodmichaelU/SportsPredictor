@@ -20,11 +20,11 @@ export default function GameTicker({ predictions, sport }: { predictions: Predic
               className="flex w-40 shrink-0 flex-col gap-2 rounded-lg border border-neutral-200 bg-white p-3 shadow-sm transition-shadow hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900"
             >
               <div className="flex items-center gap-1.5">
-                <TeamBadge team={p.away_team} size="sm" />
+                <TeamBadge team={p.away_team} sport={sport} size="sm" />
                 <span className="truncate text-xs text-neutral-600 dark:text-neutral-400">{p.away_team}</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <TeamBadge team={p.home_team} size="sm" />
+                <TeamBadge team={p.home_team} sport={sport} size="sm" />
                 <span className="truncate text-xs text-neutral-600 dark:text-neutral-400">{p.home_team}</span>
               </div>
               <div className="text-xs font-bold text-indigo-600 dark:text-indigo-400">

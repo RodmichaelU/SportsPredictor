@@ -27,7 +27,7 @@ export default function PredictionCard({ prediction, sport }: { prediction: Pred
           instead of squeezing two names either side of a divider. */}
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center gap-2">
-          <TeamBadge team={p.away_team} size="sm" />
+          <TeamBadge team={p.away_team} sport={sport} size="sm" />
           <Link
             href={`/teams/${encodeURIComponent(p.away_team)}?sport=${sport}`}
             className={`flex-1 truncate text-sm hover:text-indigo-600 dark:hover:text-indigo-400 ${!homeIsPick ? "font-bold" : "text-neutral-500 dark:text-neutral-400"}`}
@@ -36,7 +36,7 @@ export default function PredictionCard({ prediction, sport }: { prediction: Pred
           </Link>
         </div>
         <div className="flex items-center gap-2">
-          <TeamBadge team={p.home_team} size="sm" />
+          <TeamBadge team={p.home_team} sport={sport} size="sm" />
           <Link
             href={`/teams/${encodeURIComponent(p.home_team)}?sport=${sport}`}
             className={`flex-1 truncate text-sm hover:text-indigo-600 dark:hover:text-indigo-400 ${homeIsPick ? "font-bold" : "text-neutral-500 dark:text-neutral-400"}`}

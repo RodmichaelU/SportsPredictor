@@ -3,11 +3,13 @@ import TeamBadge from "./TeamBadge";
 export default function ProbabilityDuel({
   homeTeam,
   awayTeam,
+  sport,
   winProbability, // home team's win probability, 0-1
   caption = "Win probability, as of when this prediction was frozen",
 }: {
   homeTeam: string;
   awayTeam: string;
+  sport: string;
   winProbability: number;
   caption?: string;
 }) {
@@ -18,12 +20,12 @@ export default function ProbabilityDuel({
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between text-sm font-semibold">
         <span className="flex items-center gap-2">
-          <TeamBadge team={awayTeam} size="sm" />
+          <TeamBadge team={awayTeam} sport={sport} size="sm" />
           {awayTeam}
         </span>
         <span className="flex items-center gap-2">
           {homeTeam}
-          <TeamBadge team={homeTeam} size="sm" />
+          <TeamBadge team={homeTeam} sport={sport} size="sm" />
         </span>
       </div>
       <div className="flex h-8 overflow-hidden rounded-full border border-neutral-200 dark:border-neutral-800">

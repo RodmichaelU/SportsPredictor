@@ -87,4 +87,13 @@ export async function getTeam(sport: string, team: string): Promise<TeamDetail> 
   return fetchJson<TeamDetail>(`/team?sport=${sport}&team=${encodeURIComponent(team)}`);
 }
 
+// team name/code -> logo URL. Called from every TeamBadge instance, but
+// Next's request memoization collapses repeated calls with the same URL
+// into one actual fetch per render, so this doesn't mean one round-trip per
+// badge.
+export async function getTeamLogos(sport: string): Promise<Record<string, string>> {
+  if (!API_BASE_URL) return {};
+  return fetchJson<Record<string, string>>(`/team-logos?sport=${sport}`);
+}
+
 export const isLiveApi = Boolean(API_BASE_URL);

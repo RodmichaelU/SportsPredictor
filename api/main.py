@@ -382,6 +382,19 @@ def get_explain(sport: str = "cfb", game_id: str = Query(...)):
     }
 
 
+@app.get("/team-logos")
+def get_team_logos(sport: str = "cfb"):
+    """team name/code -> logo URL. Sourced straight from each sport's data
+    provider (CFBD's /teams, nflreadpy's load_teams()) rather than hosting
+    logo assets ourselves -- free, no licensing/asset-management burden, and
+    matches this project's "free resources only" constraint. nba/nhl have no
+    team_logos() yet (their ingest modules predate this), so they safely
+    fall back to an empty map instead of erroring."""
+    ingest = registry.ingest_module(sport)
+    logos_fn = getattr(ingest, "team_logos", None)
+    return logos_fn() if logos_fn else {}
+
+
 @app.get("/teams")
 def get_teams(sport: str = "cfb"):
     """Every team with at least one frozen prediction on record for this

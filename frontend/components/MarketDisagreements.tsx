@@ -52,11 +52,11 @@ export default function MarketDisagreements({ predictions, sport }: { prediction
             </div>
             <div className="flex flex-col gap-1">
               <div className="flex items-center gap-1.5 text-xs text-neutral-500">
-                <TeamBadge team={p.away_team} size="sm" />
+                <TeamBadge team={p.away_team} sport={sport} size="sm" />
                 {p.away_team}
               </div>
               <div className="flex items-center gap-1.5 text-sm font-semibold">
-                <TeamBadge team={p.home_team} size="sm" />
+                <TeamBadge team={p.home_team} sport={sport} size="sm" />
                 {p.home_team}
               </div>
             </div>

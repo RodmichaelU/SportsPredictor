@@ -1,6 +1,9 @@
-// Deterministic color + initials per team, so every team reads consistently
-// across the app without needing real logo assets (licensing, asset
-// management) for ~270 college football teams plus NFL/NBA/NHL down the line.
+import { getTeamLogos } from "@/lib/api";
+
+// Real team logos (sourced from each sport's own free data provider -- see
+// getTeamLogos) when available; deterministic color + initials otherwise, so
+// every team still reads consistently even for teams the provider has no
+// logo for, or for nba/nhl which don't have a logo source wired up yet.
 const PALETTE = [
   "bg-rose-500", "bg-orange-500", "bg-amber-500", "bg-lime-600",
   "bg-emerald-500", "bg-teal-500", "bg-cyan-600", "bg-blue-500",
@@ -28,7 +31,31 @@ const SIZES = {
   lg: "h-12 w-12 text-sm",
 };
 
-export default function TeamBadge({ team, size = "md" }: { team: string; size?: keyof typeof SIZES }) {
+export default async function TeamBadge({
+  team,
+  sport,
+  size = "md",
+}: {
+  team: string;
+  sport: string;
+  size?: keyof typeof SIZES;
+}) {
+  const logos = await getTeamLogos(sport);
+  const logoUrl = logos[team];
+
+  // External, provider-hosted logos from two different CDNs -- not worth
+  // wiring up next/image's remote-pattern allowlist for badge-sized icons.
+  if (logoUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={logoUrl}
+        alt={team}
+        className={`inline-block ${SIZES[size]} shrink-0 rounded-full bg-white object-contain ring-1 ring-neutral-200 dark:ring-neutral-800`}
+      />
+    );
+  }
+
   const color = PALETTE[hashString(team) % PALETTE.length];
   return (
     <span

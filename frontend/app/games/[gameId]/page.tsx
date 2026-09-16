@@ -34,6 +34,7 @@ export default async function GameExplanationPage(props: PageProps<"/games/[game
         <ProbabilityDuel
           homeTeam={data.home_team}
           awayTeam={data.away_team}
+          sport={sport}
           winProbability={data.win_probability}
         />
 
@@ -45,6 +46,7 @@ export default async function GameExplanationPage(props: PageProps<"/games/[game
             <ProbabilityDuel
               homeTeam={data.home_team}
               awayTeam={data.away_team}
+              sport={sport}
               winProbability={data.market_home_probability}
               caption="Live implied probability from Kalshi's real-money prediction market"
             />

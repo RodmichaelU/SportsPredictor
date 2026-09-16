@@ -43,6 +43,15 @@ def kickoff_timestamp(sched: pd.DataFrame) -> pd.Series:
     return naive.dt.tz_localize(ET, ambiguous="NaT", nonexistent="shift_forward").dt.tz_convert("UTC")
 
 
+def team_logos() -> dict:
+    """team_abbr -> ESPN logo URL, for every current NFL team. Keyed by the
+    same abbreviation load_games() uses for home_team/away_team (nflverse's
+    own schedules and team tables share one code system), so it's a direct
+    lookup with no name matching."""
+    teams = nfl.load_teams().to_pandas()
+    return dict(zip(teams["team_abbr"], teams["team_logo_espn"]))
+
+
 def ingest_team_stats(start_season: int, end_season: int) -> pd.DataFrame:
     """A season with zero games played yet (e.g. predicting week 1 before
     any results exist) has no stats_team_week_<year>.parquet file published

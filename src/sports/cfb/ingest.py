@@ -49,6 +49,21 @@ def ingest_sp_ratings(year: int) -> list:
     return client.get("/ratings/sp", {"year": year})
 
 
+def ingest_teams() -> list:
+    """Team metadata (logos, colors) -- not season-scoped like the rest of
+    this module, so it's cached once under one key rather than busted by
+    refresh.py's current-season cache-busting (a school's logo doesn't
+    change week to week the way rosters and stats do)."""
+    return client.get("/teams", {})
+
+
+def team_logos() -> dict:
+    """school name -> logo URL, for every team CFBD has at least one logo
+    for. Keyed by the same "school" string load_games() uses for
+    home_team/away_team, so it's a direct lookup with no name matching."""
+    return {t["school"]: t["logos"][0] for t in ingest_teams() if t.get("logos")}
+
+
 def ingest_season(year: int) -> dict:
     return {
         "games": ingest_games(year),

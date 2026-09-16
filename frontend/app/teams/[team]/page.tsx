@@ -35,7 +35,7 @@ export default async function TeamPage(props: PageProps<"/teams/[team]">) {
           ← All teams
         </Link>
         <div className="mt-2 flex items-center gap-3">
-          <TeamBadge team={data.team} size="lg" />
+          <TeamBadge team={data.team} sport={sport} size="lg" />
           <div>
             <h1 className="text-2xl font-semibold">{data.team}</h1>
             <p className="text-sm text-neutral-500">

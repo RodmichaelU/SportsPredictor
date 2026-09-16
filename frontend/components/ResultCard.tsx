@@ -21,7 +21,7 @@ export default function ResultCard({ result, sport }: { result: Result; sport: s
           center-aligned score. */}
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center gap-2">
-          <TeamBadge team={r.away_team} size="sm" />
+          <TeamBadge team={r.away_team} sport={sport} size="sm" />
           <Link
             href={`/teams/${encodeURIComponent(r.away_team)}?sport=${sport}`}
             className={`flex-1 truncate text-sm hover:text-indigo-600 dark:hover:text-indigo-400 ${!homeWon ? "font-bold" : "text-neutral-500 dark:text-neutral-400"}`}
@@ -31,7 +31,7 @@ export default function ResultCard({ result, sport }: { result: Result; sport: s
           <span className="text-sm font-bold tabular-nums">{r.away_score}</span>
         </div>
         <div className="flex items-center gap-2">
-          <TeamBadge team={r.home_team} size="sm" />
+          <TeamBadge team={r.home_team} sport={sport} size="sm" />
           <Link
             href={`/teams/${encodeURIComponent(r.home_team)}?sport=${sport}`}
             className={`flex-1 truncate text-sm hover:text-indigo-600 dark:hover:text-indigo-400 ${homeWon ? "font-bold" : "text-neutral-500 dark:text-neutral-400"}`}
