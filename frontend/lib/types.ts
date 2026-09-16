@@ -111,3 +111,29 @@ export interface Calibration {
   sample_size: number;
   bins: CalibrationBin[]; // empty buckets omitted
 }
+
+export interface TeamGame extends Prediction {
+  // null until reconcile.py scores this game -- same "not yet reconciled,
+  // not necessarily not yet played" caveat as elsewhere.
+  home_score: number | null;
+  away_score: number | null;
+  actual_winner: string | null;
+  actual_margin: number | null;
+  hit: boolean | null;
+}
+
+export interface EloHistoryPoint {
+  game_date: string;
+  opponent: string;
+  rating_before: number;
+  rating_after: number;
+}
+
+export interface TeamDetail {
+  sport: string;
+  team: string;
+  record: { wins: number; losses: number };
+  current_elo: number | null;
+  elo_history: EloHistoryPoint[]; // this season only, chronological
+  games: TeamGame[]; // every game with a frozen prediction, chronological
+}

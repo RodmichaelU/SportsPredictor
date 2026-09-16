@@ -28,15 +28,21 @@ export default function PredictionCard({ prediction, sport }: { prediction: Pred
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center gap-2">
           <TeamBadge team={p.away_team} size="sm" />
-          <span className={`flex-1 text-sm ${!homeIsPick ? "font-bold" : "text-neutral-500 dark:text-neutral-400"}`}>
+          <Link
+            href={`/teams/${encodeURIComponent(p.away_team)}?sport=${sport}`}
+            className={`flex-1 truncate text-sm hover:text-indigo-600 dark:hover:text-indigo-400 ${!homeIsPick ? "font-bold" : "text-neutral-500 dark:text-neutral-400"}`}
+          >
             {p.away_team}
-          </span>
+          </Link>
         </div>
         <div className="flex items-center gap-2">
           <TeamBadge team={p.home_team} size="sm" />
-          <span className={`flex-1 text-sm ${homeIsPick ? "font-bold" : "text-neutral-500 dark:text-neutral-400"}`}>
+          <Link
+            href={`/teams/${encodeURIComponent(p.home_team)}?sport=${sport}`}
+            className={`flex-1 truncate text-sm hover:text-indigo-600 dark:hover:text-indigo-400 ${homeIsPick ? "font-bold" : "text-neutral-500 dark:text-neutral-400"}`}
+          >
             {p.home_team}
-          </span>
+          </Link>
         </div>
       </div>
 

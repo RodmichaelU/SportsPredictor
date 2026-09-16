@@ -16,7 +16,8 @@ import numpy as np
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-from src import models, predict, store
+import config
+from src import elo, models, predict, store
 from src.evaluate import expected_calibration_error
 from src.models import classification_metrics
 from src.odds import kalshi
@@ -378,4 +379,107 @@ def get_explain(sport: str = "cfb", game_id: str = Query(...)):
         "model_version": row["model_version"],
         "groups": groups,
         "market_home_probability": market["home_probability"] if market else None,
+    }
+
+
+@app.get("/teams")
+def get_teams(sport: str = "cfb"):
+    """Every team with at least one frozen prediction on record for this
+    sport -- i.e. every team a /team lookup will actually return something
+    for, rather than every team in the raw schedule (most of which have
+    never been predicted, since predict.py/refresh.py only ever freeze the
+    nearest upcoming week)."""
+    conn = store.get_connection()
+    rows = conn.execute(
+        "SELECT DISTINCT home_team AS team FROM predictions WHERE sport = ? "
+        "UNION SELECT DISTINCT away_team AS team FROM predictions WHERE sport = ? "
+        "ORDER BY team",
+        (sport, sport),
+    ).fetchall()
+    conn.close()
+    return [r["team"] for r in rows]
+
+
+@app.get("/team")
+def get_team(sport: str = "cfb", team: str = Query(...)):
+    """Everything we know about one team: every game it's had a frozen
+    prediction for (reused from the predictions store, not re-derived from
+    the raw schedule -- see /teams), its record, and its Elo rating
+    trajectory through the current season."""
+    conn = store.get_connection()
+    rows = conn.execute(
+        "SELECT * FROM predictions WHERE sport = ? AND (home_team = ? OR away_team = ?) ORDER BY game_date",
+        (sport, team, team),
+    ).fetchall()
+    conn.close()
+    if not rows:
+        raise HTTPException(status_code=404, detail="No games on record for this team")
+
+    try:
+        market_index = kalshi.build_index(sport)
+    except Exception:
+        market_index = {}
+
+    games = []
+    wins = losses = 0
+    for r in rows:
+        market = kalshi.match_game(sport, r["home_team"], r["away_team"], market_index) if r["hit"] is None else None
+        game = _prediction_dict(r, market)
+        game.update(
+            {
+                "home_score": r["home_score"],
+                "away_score": r["away_score"],
+                "actual_winner": r["actual_winner"],
+                "actual_margin": r["actual_margin"],
+                "hit": bool(r["hit"]) if r["hit"] is not None else None,
+            }
+        )
+        games.append(game)
+        if r["actual_winner"] == team:
+            wins += 1
+        elif r["actual_winner"] is not None:
+            losses += 1
+
+    # Elo rating trajectory: re-simulate the whole sport (elo.py is cheap --
+    # a plain dict-update loop, not a model fit) with this sport's already
+    # tuned K/home-field advantage, then keep only this team's current-season
+    # games. Kept separate from the predictions-store loop above because Elo
+    # ratings depend on the full chronological game sequence, not just this
+    # team's games.
+    ingest = registry.ingest_module(sport)
+    all_games = ingest.load_games(config.START_SEASON, config.CURRENT_SEASON)
+    k = getattr(ingest, "ELO_K")
+    hfa = getattr(ingest, "ELO_HOME_ADVANTAGE")
+    sim = elo.simulate(all_games, k, hfa)
+    sim = sim.merge(all_games[["game_id", "start_date"]], on="game_id", how="left")
+
+    team_sim = sim[
+        (sim["season"] == config.CURRENT_SEASON) & ((sim["home_team"] == team) | (sim["away_team"] == team))
+    ].sort_values("start_date")
+
+    elo_history = []
+    for r in team_sim.itertuples():
+        is_home = r.home_team == team
+        pregame = r.home_pregame_elo if is_home else r.away_pregame_elo
+        team_result = r.home_win if is_home else 1 - r.home_win
+        team_prob = r.home_win_prob if is_home else 1 - r.home_win_prob
+        postgame = pregame + k * (team_result - team_prob)
+        elo_history.append(
+            {
+                "game_date": r.start_date,
+                "opponent": r.away_team if is_home else r.home_team,
+                "rating_before": pregame,
+                "rating_after": postgame,
+            }
+        )
+
+    current_elo = elo_history[-1]["rating_after"] if elo_history else None
+
+    return {
+        "sport": sport,
+        "team": team,
+        "record": {"wins": wins, "losses": losses},
+        "current_elo": current_elo,
+        "elo_history": elo_history,
+        "games": games,
     }

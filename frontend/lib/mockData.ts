@@ -1,4 +1,4 @@
-import { AccuracySummary, Calibration, CurveTarget, Explanation, ModelCurve, ModelWeights, Prediction, Result, Sport } from "./types";
+import { AccuracySummary, Calibration, CurveTarget, EloHistoryPoint, Explanation, ModelCurve, ModelWeights, Prediction, Result, Sport, TeamDetail, TeamGame } from "./types";
 
 // Placeholder data shaped like the real Phase 6 API responses will be, so the
 // UI can be built and reviewed before the CFBD-backed pipeline exists.
@@ -336,4 +336,44 @@ export function mockModelCurve(sport: string, feature: string, target: CurveTarg
   });
 
   return { sport, feature, label: feature.replace(/_/g, " "), target, curve, scatter };
+}
+
+export const MOCK_TEAMS: string[] = [
+  ...new Set([...MOCK_PREDICTIONS, ...MOCK_RESULTS].flatMap((g) => [g.home_team, g.away_team])),
+].sort();
+
+export function mockTeamDetail(sport: string, team: string): TeamDetail {
+  const games: TeamGame[] = [...MOCK_PREDICTIONS, ...MOCK_RESULTS]
+    .filter((g) => g.home_team === team || g.away_team === team)
+    .map((g) => ({
+      ...g,
+      home_score: "home_score" in g ? (g as Result).home_score : null,
+      away_score: "away_score" in g ? (g as Result).away_score : null,
+      actual_winner: "actual_winner" in g ? (g as Result).actual_winner : null,
+      actual_margin: "actual_margin" in g ? (g as Result).actual_margin : null,
+      hit: "hit" in g ? (g as Result).hit : null,
+    }))
+    .sort((a, b) => a.game_date.localeCompare(b.game_date));
+
+  const wins = games.filter((g) => g.actual_winner === team).length;
+  const losses = games.filter((g) => g.actual_winner !== null && g.actual_winner !== team).length;
+
+  let rating = 1650;
+  const elo_history: EloHistoryPoint[] = games
+    .filter((g) => g.hit !== null)
+    .map((g) => {
+      const opponent = g.home_team === team ? g.away_team : g.home_team;
+      const rating_before = rating;
+      rating += g.actual_winner === team ? 22 : -18;
+      return { game_date: g.game_date, opponent, rating_before, rating_after: rating };
+    });
+
+  return {
+    sport,
+    team,
+    record: { wins, losses },
+    current_elo: elo_history.length > 0 ? elo_history[elo_history.length - 1].rating_after : null,
+    elo_history,
+    games,
+  };
 }
