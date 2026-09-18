@@ -3,6 +3,7 @@ import { getPredictions, getSports } from "@/lib/api";
 import PredictionCard from "@/components/PredictionCard";
 import ComingSoon from "@/components/ComingSoon";
 import MarketDisagreements from "@/components/MarketDisagreements";
+import Reveal from "@/components/Reveal";
 
 export default async function PredictionsPage(props: PageProps<"/predictions">) {
   const searchParams = await props.searchParams;
@@ -42,11 +43,11 @@ export default async function PredictionsPage(props: PageProps<"/predictions">) 
       ) : (
         <>
           <MarketDisagreements predictions={predictions} sport={sport} />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Reveal className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {predictions.map((p) => (
               <PredictionCard key={p.game_id} prediction={p} sport={sport} />
             ))}
-          </div>
+          </Reveal>
         </>
       )}
     </div>

@@ -2,6 +2,7 @@ import { getModelWeights, getSports } from "@/lib/api";
 import WeightBar from "@/components/WeightBar";
 import ModelCurveExplorer from "@/components/ModelCurveExplorer";
 import ComingSoon from "@/components/ComingSoon";
+import Reveal from "@/components/Reveal";
 
 export default async function ModelPage(props: PageProps<"/model">) {
   const searchParams = await props.searchParams;
@@ -39,18 +40,18 @@ export default async function ModelPage(props: PageProps<"/model">) {
         </span>
       </div>
 
-      <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
+      <Reveal className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
         {data.weights.map((w) => (
           <WeightBar key={w.feature} weight={w} maxAbsWeight={maxAbsWeight} />
         ))}
-      </div>
+      </Reveal>
 
       <p className="text-xs text-neutral-500">
         Model version {data.model_version}. All &quot;gap&quot; features are home team minus away
         team -- e.g. a positive Elo rating gap means the home team is rated higher.
       </p>
 
-      <div className="mt-4 border-t border-neutral-200 pt-6 dark:border-neutral-800">
+      <Reveal as="section" className="mt-4 border-t border-neutral-200 pt-6 dark:border-neutral-800">
         <h2 className="text-lg font-semibold">See the actual math</h2>
         <p className="mt-1 max-w-2xl text-sm text-neutral-500">
           Win probability comes from logistic regression (an S-curve, saturating toward 0% and 100%
@@ -63,7 +64,7 @@ export default async function ModelPage(props: PageProps<"/model">) {
         <div className="mt-4">
           <ModelCurveExplorer sport={sport} featureOptions={data.weights} />
         </div>
-      </div>
+      </Reveal>
     </div>
   );
 }

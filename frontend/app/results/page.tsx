@@ -4,6 +4,7 @@ import CalibrationChart from "@/components/CalibrationChart";
 import ResultCard from "@/components/ResultCard";
 import ComingSoon from "@/components/ComingSoon";
 import WeekFilter from "@/components/WeekFilter";
+import Reveal from "@/components/Reveal";
 
 export default async function ResultsPage(props: PageProps<"/results">) {
   const searchParams = await props.searchParams;
@@ -40,7 +41,7 @@ export default async function ResultsPage(props: PageProps<"/results">) {
       <AccuracyCard summary={accuracy} />
 
       {calibration.sample_size >= 10 && (
-        <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+        <Reveal className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
           <div className="mb-1 text-sm font-semibold">Is the model&apos;s confidence trustworthy?</div>
           <p className="mb-3 max-w-2xl text-sm text-neutral-500">
             Every completed game grouped by how confident the model was, compared to how often the
@@ -49,7 +50,7 @@ export default async function ResultsPage(props: PageProps<"/results">) {
             80% of the time. Dot size shows how many games are in that group.
           </p>
           <CalibrationChart bins={calibration.bins} />
-        </div>
+        </Reveal>
       )}
 
       {visibleResults.length === 0 ? (
@@ -57,11 +58,11 @@ export default async function ResultsPage(props: PageProps<"/results">) {
           {results.length === 0 ? "No completed games for this sport yet." : "No completed games for that week."}
         </p>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Reveal className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visibleResults.map((r) => (
             <ResultCard key={r.game_id} result={r} sport={sport} />
           ))}
-        </div>
+        </Reveal>
       )}
     </div>
   );

@@ -3,6 +3,7 @@ import { getAccuracy, getModelCurve, getModelWeights, getPredictions, getSports 
 import CurveChart from "@/components/CurveChart";
 import WeightBar from "@/components/WeightBar";
 import GameTicker from "@/components/GameTicker";
+import Reveal from "@/components/Reveal";
 
 function StepBadge({ n }: { n: number }) {
   return (
@@ -97,7 +98,7 @@ export default async function HomePage() {
 
         <div className="flex flex-col gap-12">
           {/* Step 1: data */}
-          <div className="flex gap-4">
+          <Reveal className="flex gap-4">
             <StepBadge n={1} />
             <div>
               <h3 className="text-xl font-semibold">Start with what was true before kickoff</h3>
@@ -109,10 +110,10 @@ export default async function HomePage() {
                 peeks at the result would look brilliant and mean nothing.
               </p>
             </div>
-          </div>
+          </Reveal>
 
           {/* Step 2: Elo */}
-          <div className="flex gap-4">
+          <Reveal className="flex gap-4">
             <StepBadge n={2} />
             <div>
               <h3 className="text-xl font-semibold">A baseline: Elo ratings</h3>
@@ -125,10 +126,10 @@ export default async function HomePage() {
                 treat it as the floor: anything fancier has to actually beat it to justify existing.
               </p>
             </div>
-          </div>
+          </Reveal>
 
           {/* Step 3: logistic regression + S-curve */}
-          <div className="flex gap-4">
+          <Reveal className="flex gap-4">
             <StepBadge n={3} />
             <div className="flex-1">
               <h3 className="text-xl font-semibold">Win probability: logistic regression</h3>
@@ -145,10 +146,10 @@ export default async function HomePage() {
                 <CurveChart curve={winCurve.curve} scatter={winCurve.scatter} target="win" xLabel={winCurve.label} />
               </div>
             </div>
-          </div>
+          </Reveal>
 
           {/* Step 4: ridge regression + line */}
-          <div className="flex gap-4">
+          <Reveal className="flex gap-4">
             <StepBadge n={4} />
             <div className="flex-1">
               <h3 className="text-xl font-semibold">Predicted margin: ridge regression</h3>
@@ -168,10 +169,10 @@ export default async function HomePage() {
                 />
               </div>
             </div>
-          </div>
+          </Reveal>
 
           {/* Step 5: why not fancier */}
-          <div className="flex gap-4">
+          <Reveal className="flex gap-4">
             <StepBadge n={5} />
             <div className="flex-1">
               <h3 className="text-xl font-semibold">Why not something fancier?</h3>
@@ -206,10 +207,10 @@ export default async function HomePage() {
                 </div>
               )}
             </div>
-          </div>
+          </Reveal>
 
           {/* Step 6: grading */}
-          <div className="flex gap-4">
+          <Reveal className="flex gap-4">
             <StepBadge n={6} />
             <div>
               <h3 className="text-xl font-semibold">Graded honestly, every week</h3>
@@ -221,12 +222,15 @@ export default async function HomePage() {
                 to follow.
               </p>
             </div>
-          </div>
+          </Reveal>
         </div>
       </section>
 
       {/* Closing CTA */}
-      <section className="flex flex-col items-center gap-4 rounded-2xl border border-neutral-200 bg-white px-6 py-12 text-center dark:border-neutral-800 dark:bg-neutral-900">
+      <Reveal
+        as="section"
+        className="flex flex-col items-center gap-4 rounded-2xl border border-neutral-200 bg-white px-6 py-12 text-center dark:border-neutral-800 dark:bg-neutral-900"
+      >
         <h2 className="text-2xl font-bold tracking-tight">See it in action</h2>
         <p className="max-w-lg text-neutral-600 dark:text-neutral-400">
           Every game&apos;s prediction has its own &quot;Why?&quot; page with the exact factors that
@@ -243,7 +247,7 @@ export default async function HomePage() {
             </Link>
           ))}
         </div>
-      </section>
+      </Reveal>
     </div>
   );
 }

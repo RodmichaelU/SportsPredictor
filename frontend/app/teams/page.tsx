@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getSports, getTeams } from "@/lib/api";
 import ComingSoon from "@/components/ComingSoon";
+import Reveal from "@/components/Reveal";
 
 export default async function TeamsIndexPage(props: PageProps<"/teams">) {
   const searchParams = await props.searchParams;
@@ -27,7 +28,7 @@ export default async function TeamsIndexPage(props: PageProps<"/teams">) {
       {teams.length === 0 ? (
         <p className="text-sm text-neutral-500">No teams on record for this sport yet.</p>
       ) : (
-        <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 md:grid-cols-4">
+        <Reveal className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 md:grid-cols-4">
           {teams.map((team) => (
             <Link
               key={team}
@@ -37,7 +38,7 @@ export default async function TeamsIndexPage(props: PageProps<"/teams">) {
               {team}
             </Link>
           ))}
-        </div>
+        </Reveal>
       )}
     </div>
   );

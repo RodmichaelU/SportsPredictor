@@ -6,6 +6,7 @@ import EloTrendChart from "@/components/EloTrendChart";
 import PredictionCard from "@/components/PredictionCard";
 import ResultCard from "@/components/ResultCard";
 import TeamBadge from "@/components/TeamBadge";
+import Reveal from "@/components/Reveal";
 
 function isDecided(g: TeamGame): g is TeamGame & Result {
   return g.hit !== null;
@@ -46,31 +47,31 @@ export default async function TeamPage(props: PageProps<"/teams/[team]">) {
         </div>
       </div>
 
-      <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+      <Reveal className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
         <div className="mb-3 text-sm font-semibold">Elo rating this season</div>
         <EloTrendChart history={data.elo_history} currentRating={data.current_elo} />
-      </div>
+      </Reveal>
 
       {upcoming.length > 0 && (
-        <div>
+        <Reveal delayMs={100}>
           <h2 className="text-lg font-semibold">Upcoming</h2>
           <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {upcoming.map((g) => (
               <PredictionCard key={g.game_id} prediction={g} sport={sport} />
             ))}
           </div>
-        </div>
+        </Reveal>
       )}
 
       {decided.length > 0 && (
-        <div>
+        <Reveal delayMs={upcoming.length > 0 ? 200 : 100}>
           <h2 className="text-lg font-semibold">Season so far</h2>
           <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {decided.map((g) => (
               <ResultCard key={g.game_id} result={g} sport={sport} />
             ))}
           </div>
-        </div>
+        </Reveal>
       )}
     </div>
   );
