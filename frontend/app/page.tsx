@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getAccuracy, getModelCurve, getModelWeights, getPredictions, getSports } from "@/lib/api";
+import { rankByValue } from "@/lib/valueBets";
 import CurveChart from "@/components/CurveChart";
 import WeightBar from "@/components/WeightBar";
 import GameTicker from "@/components/GameTicker";
@@ -28,6 +29,7 @@ export default async function HomePage() {
   const topWeights = weights.weights.slice(0, 6);
   const maxAbsWeight = Math.max(...topWeights.map((w) => Math.abs(w.weight)), 0);
   const liveStats = accuracies.filter((a) => a.sample_size > 0);
+  const valuePicks = rankByValue(previewGames).slice(0, 10);
 
   return (
     <div className="flex flex-col gap-20">
@@ -76,12 +78,15 @@ export default async function HomePage() {
           )}
         </div>
 
-        {previewGames.length > 0 && (
+        {valuePicks.length > 0 && (
           <div className="mt-10">
-            <div className="mx-auto mb-2 w-max px-6 text-xs font-semibold tracking-wide text-neutral-400 uppercase">
-              This week&apos;s picks
+            <div className="mx-auto mb-1 w-max px-6 text-xs font-semibold tracking-wide text-neutral-400 uppercase">
+              Best value this week
             </div>
-            <GameTicker predictions={previewGames.slice(0, 10)} sport={primarySport} />
+            <div className="mx-auto mb-2 max-w-xs px-6 text-center text-xs text-neutral-400 sm:max-w-none">
+              Where our model and the live market disagree most, ranked by expected return
+            </div>
+            <GameTicker picks={valuePicks} sport={primarySport} />
           </div>
         )}
       </section>
