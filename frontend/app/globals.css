@@ -24,3 +24,14 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
+
+/* Horizontal-scroll strips (GameTicker) still scroll via touch/trackpad/
+   drag -- this only hides the browser's own scrollbar track, which read as
+   a stray horizontal line cutting across the hero section. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

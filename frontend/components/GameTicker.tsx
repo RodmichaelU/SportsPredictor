@@ -9,7 +9,10 @@ export default function GameTicker({ predictions, sport }: { predictions: Predic
   if (predictions.length === 0) return null;
 
   return (
-    <div className="w-full overflow-x-auto">
+    // The browser's own horizontal scrollbar track read as a stray line
+    // cutting across the hero section -- hidden via .no-scrollbar, but the
+    // strip still scrolls fine with touch/trackpad/drag.
+    <div className="no-scrollbar w-full overflow-x-auto">
       <div className="mx-auto flex w-max gap-3 px-6 pb-2">
         {predictions.map((p) => {
           const confidence = Math.round(pickConfidence(p) * 100);
