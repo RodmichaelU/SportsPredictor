@@ -64,6 +64,31 @@ def team_logos() -> dict:
     return {t["school"]: t["logos"][0] for t in ingest_teams() if t.get("logos")}
 
 
+def standings(season: int) -> list[dict]:
+    """Win-loss record per FBS team this season, with conference (for
+    grouping). Derived from load_games() rather than CFBD's own /records
+    endpoint, so it's consistent with every other win/loss count this app
+    shows and costs no extra CFBD calls beyond ingest_teams(), already
+    cached by team_logos().
+
+    /teams has 57 duplicate school names once every classification and
+    historical entry is included (e.g. multiple unrelated schools named
+    "Albany") -- restricting to classification == "fbs" leaves exactly the
+    138 current FBS teams with no collisions, so this is a safe direct
+    lookup rather than fuzzy matching."""
+    conference_by_team = {t["school"]: t.get("conference") for t in ingest_teams() if t.get("classification") == "fbs"}
+
+    games = load_games(season, season)
+    records: dict[str, dict] = {}
+    for row in games.itertuples():
+        for team, won in ((row.home_team, row.home_win == 1), (row.away_team, row.home_win == 0)):
+            record = records.setdefault(
+                team, {"team": team, "conference": conference_by_team.get(team), "wins": 0, "losses": 0}
+            )
+            record["wins" if won else "losses"] += 1
+    return list(records.values())
+
+
 def ingest_season(year: int) -> dict:
     return {
         "games": ingest_games(year),

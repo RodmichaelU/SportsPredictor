@@ -137,3 +137,20 @@ export interface TeamDetail {
   elo_history: EloHistoryPoint[]; // this season only, chronological
   games: TeamGame[]; // every game with a frozen prediction, chronological
 }
+
+export interface StandingsTeam {
+  team: string;
+  wins: number;
+  losses: number;
+}
+
+export interface StandingsGroup {
+  group: string; // conference (CFB) or "<Conference> <Division>" (NFL)
+  teams: StandingsTeam[]; // sorted by win pct, then win count, descending
+}
+
+export interface Standings {
+  sport: string;
+  season: number;
+  groups: StandingsGroup[]; // sorted by group name; empty for sports with no standings() source yet
+}

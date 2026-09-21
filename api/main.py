@@ -395,6 +395,50 @@ def get_team_logos(sport: str = "cfb"):
     return logos_fn() if logos_fn else {}
 
 
+@app.get("/standings")
+def get_standings(sport: str = "cfb", season: int = Query(default=None)):
+    """Win-loss records for the season, grouped by conference (NFL:
+    conference + division). Sourced from each sport's ingest module's
+    standings() -- derived from the same load_games() every other win/loss
+    count in this app uses, so a team's record here always matches its
+    record shown on its own team page. nba/nhl have no standings() yet, so
+    they safely fall back to no groups instead of erroring."""
+    season = season or config.CURRENT_SEASON
+    ingest = registry.ingest_module(sport)
+    standings_fn = getattr(ingest, "standings", None)
+    if not standings_fn:
+        return {"sport": sport, "season": season, "groups": []}
+
+    rows = standings_fn(season)
+
+    groups: dict[str, list[dict]] = {}
+    for r in rows:
+        # nflverse's team_division is already "AFC East"-style (conference
+        # prefix included), so it doubles as the full group key on its own.
+        if sport == "nfl" and r.get("division"):
+            key = r["division"]
+        else:
+            key = r.get("conference") or "Independent / Other"
+        groups.setdefault(key, []).append(r)
+
+    def win_pct(r: dict) -> float:
+        games = r["wins"] + r["losses"]
+        return r["wins"] / games if games > 0 else 0.0
+
+    result_groups = []
+    for key, teams in groups.items():
+        teams.sort(key=lambda t: (-win_pct(t), -t["wins"]))
+        result_groups.append(
+            {
+                "group": key,
+                "teams": [{"team": t["team"], "wins": t["wins"], "losses": t["losses"]} for t in teams],
+            }
+        )
+    result_groups.sort(key=lambda g: g["group"])
+
+    return {"sport": sport, "season": season, "groups": result_groups}
+
+
 @app.get("/teams")
 def get_teams(sport: str = "cfb"):
     """Every team with at least one frozen prediction on record for this

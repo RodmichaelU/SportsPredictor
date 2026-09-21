@@ -1,4 +1,4 @@
-import { AccuracySummary, Calibration, CurveTarget, EloHistoryPoint, Explanation, ModelCurve, ModelWeights, Prediction, Result, Sport, TeamDetail, TeamGame } from "./types";
+import { AccuracySummary, Calibration, CurveTarget, EloHistoryPoint, Explanation, ModelCurve, ModelWeights, Prediction, Result, Sport, Standings, TeamDetail, TeamGame } from "./types";
 
 // Placeholder data shaped like the real Phase 6 API responses will be, so the
 // UI can be built and reviewed before the CFBD-backed pipeline exists.
@@ -377,3 +377,28 @@ export function mockTeamDetail(sport: string, team: string): TeamDetail {
     games,
   };
 }
+
+export const MOCK_STANDINGS: Standings = {
+  sport: "cfb",
+  season: 2026,
+  groups: [
+    {
+      group: "SEC",
+      teams: [
+        { team: "Georgia", wins: 3, losses: 0 },
+        { team: "Alabama", wins: 2, losses: 1 },
+        { team: "Auburn", wins: 2, losses: 1 },
+        { team: "Oklahoma", wins: 1, losses: 2 },
+      ],
+    },
+    {
+      group: "Big Ten",
+      teams: [
+        { team: "Ohio State", wins: 3, losses: 0 },
+        { team: "Michigan", wins: 2, losses: 1 },
+        { team: "Iowa", wins: 1, losses: 2 },
+        { team: "Wisconsin", wins: 0, losses: 3 },
+      ],
+    },
+  ],
+};

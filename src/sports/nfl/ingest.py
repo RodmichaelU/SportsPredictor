@@ -52,6 +52,35 @@ def team_logos() -> dict:
     return dict(zip(teams["team_abbr"], teams["team_logo_espn"]))
 
 
+def standings(season: int) -> list[dict]:
+    """Win-loss record per team this season, with conference/division (for
+    grouping) from the same load_teams() table team_logos() already pulls.
+    Derived from load_games() rather than a separate standings source, so
+    it's consistent with every other win/loss count this app shows."""
+    teams = nfl.load_teams().to_pandas()
+    meta_by_team = {
+        row.team_abbr: {"conference": row.team_conf, "division": row.team_division} for row in teams.itertuples()
+    }
+
+    games = load_games(season, season)
+    records: dict[str, dict] = {}
+    for row in games.itertuples():
+        for team, won in ((row.home_team, row.home_win == 1), (row.away_team, row.home_win == 0)):
+            meta = meta_by_team.get(team, {})
+            record = records.setdefault(
+                team,
+                {
+                    "team": team,
+                    "conference": meta.get("conference"),
+                    "division": meta.get("division"),
+                    "wins": 0,
+                    "losses": 0,
+                },
+            )
+            record["wins" if won else "losses"] += 1
+    return list(records.values())
+
+
 def ingest_team_stats(start_season: int, end_season: int) -> pd.DataFrame:
     """A season with zero games played yet (e.g. predicting week 1 before
     any results exist) has no stats_team_week_<year>.parquet file published
