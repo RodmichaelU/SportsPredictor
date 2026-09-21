@@ -34,7 +34,14 @@ export default function Reveal({
           observer.disconnect();
         }
       },
-      { threshold: 0.15, rootMargin: "0px 0px -60px 0px" }
+      // threshold requires that fraction of the *whole element* to be
+      // visible -- fine for a short card, but a tall stack (e.g. Standings'
+      // 11 conference tables on a narrow single-column layout) can be many
+      // viewports tall, so 15% of it never appears near the top of the
+      // page. threshold: 0 fires as soon as a single pixel is visible;
+      // rootMargin still delays that until the element is within 60px of
+      // the viewport, so this isn't just "reveal everything instantly".
+      { threshold: 0, rootMargin: "0px 0px -60px 0px" }
     );
     observer.observe(el);
     return () => observer.disconnect();
