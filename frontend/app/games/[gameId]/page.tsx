@@ -1,7 +1,29 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { getExplanation } from "@/lib/api";
+import { formatPercent, pickConfidence } from "@/lib/format";
 import ProbabilityDuel from "@/components/ProbabilityDuel";
 import ExplanationFactor from "@/components/ExplanationFactor";
+
+// Reuses the same getExplanation call the page below makes -- Next
+// memoizes fetches with identical args across generateMetadata and the
+// page component in one request, so this doesn't cost a second round-trip.
+export async function generateMetadata(props: PageProps<"/games/[gameId]">): Promise<Metadata> {
+  const { gameId } = await props.params;
+  const searchParams = await props.searchParams;
+  const sport = (searchParams.sport as string) ?? "cfb";
+
+  try {
+    const data = await getExplanation(sport, gameId);
+    const confidence = formatPercent(pickConfidence(data));
+    return {
+      title: `${data.away_team} @ ${data.home_team}`,
+      description: `The model picks ${data.predicted_winner} (${confidence}) -- see the factors driving the pick.`,
+    };
+  } catch {
+    return { title: "Game prediction" };
+  }
+}
 
 export default async function GameExplanationPage(props: PageProps<"/games/[gameId]">) {
   const { gameId } = await props.params;

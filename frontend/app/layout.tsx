@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sports Predictor",
+  title: { default: "Sports Predictor", template: "%s — Sports Predictor" },
   description: "ML-driven win probability and margin predictions, explained in plain English",
 };
 
