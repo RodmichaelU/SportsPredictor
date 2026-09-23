@@ -1,5 +1,6 @@
 import { getAccuracy, getCalibration, getResults, getSports } from "@/lib/api";
 import AccuracyCard from "@/components/AccuracyCard";
+import BiggestUpsets from "@/components/BiggestUpsets";
 import CalibrationChart from "@/components/CalibrationChart";
 import ResultCard from "@/components/ResultCard";
 import ComingSoon from "@/components/ComingSoon";
@@ -39,6 +40,8 @@ export default async function ResultsPage(props: PageProps<"/results">) {
       </div>
 
       <AccuracyCard summary={accuracy} />
+
+      <BiggestUpsets results={visibleResults} sport={sport} />
 
       {calibration.sample_size >= 10 && (
         <Reveal className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
