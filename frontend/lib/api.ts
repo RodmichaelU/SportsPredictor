@@ -1,5 +1,5 @@
-import { MOCK_ACCURACY, MOCK_CALIBRATION, MOCK_EXPLANATION, mockModelCurve, MOCK_MODEL_WEIGHTS, MOCK_PREDICTIONS, MOCK_RESULTS, MOCK_SPORTS, MOCK_STANDINGS, mockTeamDetail, MOCK_TEAMS } from "./mockData";
-import { AccuracySummary, Calibration, CurveTarget, Explanation, ModelCurve, ModelWeights, Prediction, Result, Sport, Standings, TeamDetail } from "./types";
+import { MOCK_ACCURACY, MOCK_ACCURACY_BY_WEEK, MOCK_CALIBRATION, MOCK_EXPLANATION, mockModelCurve, MOCK_MODEL_WEIGHTS, MOCK_PREDICTIONS, MOCK_RESULTS, MOCK_SPORTS, MOCK_STANDINGS, mockTeamDetail, MOCK_TEAMS } from "./mockData";
+import { AccuracyByWeek, AccuracySummary, Calibration, CurveTarget, Explanation, ModelCurve, ModelWeights, Prediction, Result, Sport, Standings, TeamDetail } from "./types";
 
 // With NEXT_PUBLIC_API_URL unset, falls back to mock data (useful for UI
 // work without the backend running). Set it to point at api/main.py
@@ -99,6 +99,11 @@ export async function getTeamLogos(sport: string): Promise<Record<string, string
 export async function getStandings(sport: string): Promise<Standings> {
   if (!API_BASE_URL) return { ...MOCK_STANDINGS, sport };
   return fetchJson<Standings>(`/standings?sport=${sport}`);
+}
+
+export async function getAccuracyByWeek(sport: string): Promise<AccuracyByWeek> {
+  if (!API_BASE_URL) return { ...MOCK_ACCURACY_BY_WEEK, sport };
+  return fetchJson<AccuracyByWeek>(`/accuracy-by-week?sport=${sport}`);
 }
 
 export const isLiveApi = Boolean(API_BASE_URL);

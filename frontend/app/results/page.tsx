@@ -1,4 +1,5 @@
-import { getAccuracy, getCalibration, getResults, getSports } from "@/lib/api";
+import { getAccuracy, getAccuracyByWeek, getCalibration, getResults, getSports } from "@/lib/api";
+import AccuracyByWeekChart from "@/components/AccuracyByWeekChart";
 import AccuracyCard from "@/components/AccuracyCard";
 import BiggestUpsets from "@/components/BiggestUpsets";
 import CalibrationChart from "@/components/CalibrationChart";
@@ -17,10 +18,11 @@ export default async function ResultsPage(props: PageProps<"/results">) {
     return <ComingSoon sport={sportInfo} />;
   }
 
-  const [results, accuracy, calibration] = await Promise.all([
+  const [results, accuracy, calibration, accuracyByWeek] = await Promise.all([
     getResults(sport),
     getAccuracy(sport),
     getCalibration(sport),
+    getAccuracyByWeek(sport),
   ]);
 
   const weeks = [...new Set(results.map((r) => r.week))].sort((a, b) => b - a);
@@ -40,6 +42,18 @@ export default async function ResultsPage(props: PageProps<"/results">) {
       </div>
 
       <AccuracyCard summary={accuracy} />
+
+      {accuracyByWeek.weeks.length >= 2 && (
+        <Reveal className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+          <div className="mb-1 text-sm font-semibold">Accuracy by week</div>
+          <p className="mb-3 max-w-2xl text-sm text-neutral-500">
+            The same hit rate as the headline number above, broken out week by week -- whether the
+            model is trending up, down, or just bouncing around isn&apos;t visible in one cumulative
+            figure.
+          </p>
+          <AccuracyByWeekChart weeks={accuracyByWeek.weeks} />
+        </Reveal>
+      )}
 
       <BiggestUpsets results={visibleResults} sport={sport} />
 

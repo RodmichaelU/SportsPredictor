@@ -1,4 +1,4 @@
-import { AccuracySummary, Calibration, CurveTarget, EloHistoryPoint, Explanation, ModelCurve, ModelWeights, Prediction, Result, Sport, Standings, TeamDetail, TeamGame } from "./types";
+import { AccuracyByWeek, AccuracySummary, Calibration, CurveTarget, EloHistoryPoint, Explanation, ModelCurve, ModelWeights, Prediction, Result, Sport, Standings, TeamDetail, TeamGame } from "./types";
 
 // Placeholder data shaped like the real Phase 6 API responses will be, so the
 // UI can be built and reviewed before the CFBD-backed pipeline exists.
@@ -400,5 +400,15 @@ export const MOCK_STANDINGS: Standings = {
         { team: "Wisconsin", wins: 0, losses: 3 },
       ],
     },
+  ],
+};
+
+export const MOCK_ACCURACY_BY_WEEK: AccuracyByWeek = {
+  sport: "cfb",
+  weeks: [
+    { season: 2026, week: 1, sample_size: 50, accuracy: 0.88 },
+    { season: 2026, week: 2, sample_size: 49, accuracy: 0.796 },
+    { season: 2026, week: 3, sample_size: 57, accuracy: 0.877 },
+    { season: 2026, week: 4, sample_size: 58, accuracy: 0.724 },
   ],
 };

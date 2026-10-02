@@ -154,3 +154,15 @@ export interface Standings {
   season: number;
   groups: StandingsGroup[]; // sorted by group name; empty for sports with no standings() source yet
 }
+
+export interface WeeklyAccuracy {
+  season: number;
+  week: number;
+  sample_size: number;
+  accuracy: number;
+}
+
+export interface AccuracyByWeek {
+  sport: string;
+  weeks: WeeklyAccuracy[]; // chronological; only weeks with at least one reconciled game
+}

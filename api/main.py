@@ -150,6 +150,30 @@ def get_accuracy(sport: str = "cfb"):
     }
 
 
+@app.get("/accuracy-by-week")
+def get_accuracy_by_week(sport: str = "cfb"):
+    """Same hit rate as /accuracy, broken out by (season, week) instead of
+    collapsed into one season-to-date number -- shows whether the model is
+    trending up, down, or just noisy week to week, which a single
+    cumulative figure can't."""
+    conn = store.get_connection()
+    rows = conn.execute(
+        "SELECT season, week, hit FROM predictions WHERE sport = ? AND hit IS NOT NULL ORDER BY season, week",
+        (sport,),
+    ).fetchall()
+    conn.close()
+
+    weeks: dict[tuple[int, int], list] = {}
+    for r in rows:
+        weeks.setdefault((r["season"], r["week"]), []).append(r["hit"])
+
+    out = [
+        {"season": season, "week": week, "sample_size": len(hits), "accuracy": sum(hits) / len(hits)}
+        for (season, week), hits in sorted(weeks.items())
+    ]
+    return {"sport": sport, "weeks": out}
+
+
 @app.get("/calibration")
 def get_calibration(sport: str = "cfb", n_bins: int = 10):
     """Reliability-diagram data: split completed games into n_bins equal-width
