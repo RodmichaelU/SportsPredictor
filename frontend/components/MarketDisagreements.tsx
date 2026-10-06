@@ -42,7 +42,7 @@ export default function MarketDisagreements({ predictions, sport }: { prediction
           <Link
             key={p.game_id}
             href={`/games/${p.game_id}?sport=${sport}`}
-            className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-3 transition-shadow hover:shadow-md dark:border-neutral-800"
+            className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-3 transition-[box-shadow,transform] duration-150 ease-out hover:shadow-md active:scale-[0.98] dark:border-neutral-800"
           >
             <div className="flex items-center justify-between text-xs text-neutral-500">
               <span>{formatGameDate(p.game_date)}</span>

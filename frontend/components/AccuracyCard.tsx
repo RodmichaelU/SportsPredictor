@@ -17,7 +17,7 @@ export default function AccuracyCard({ summary }: { summary: AccuracySummary }) 
         <div className="text-xs font-semibold tracking-wide text-indigo-600 uppercase dark:text-indigo-400">
           Accuracy
         </div>
-        <div className="mt-1 text-4xl font-black tabular-nums text-indigo-700 dark:text-indigo-300">
+        <div className="mt-1 text-4xl font-black tracking-tight tabular-nums text-indigo-700 dark:text-indigo-300">
           {summary.accuracy === null ? "—" : formatPercent(summary.accuracy)}
         </div>
       </div>

@@ -17,7 +17,7 @@ export default function Error({ reset }: { error: Error & { digest?: string }; r
       </p>
       <button
         onClick={reset}
-        className="rounded-full bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
+        className="rounded-full bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition duration-150 ease-out hover:bg-indigo-700 active:scale-[0.97]"
       >
         Try again
       </button>

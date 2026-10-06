@@ -33,7 +33,7 @@ export default async function TeamsIndexPage(props: PageProps<"/teams">) {
             <Link
               key={team}
               href={`/teams/${encodeURIComponent(team)}?sport=${sport}`}
-              className="truncate rounded-lg px-3 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-indigo-600 dark:text-neutral-300 dark:hover:bg-neutral-900 dark:hover:text-indigo-400"
+              className="truncate rounded-lg px-3 py-2 text-sm font-medium text-neutral-700 transition duration-150 ease-out hover:bg-neutral-100 hover:text-indigo-600 active:scale-[0.96] dark:text-neutral-300 dark:hover:bg-neutral-900 dark:hover:text-indigo-400"
             >
               {team}
             </Link>

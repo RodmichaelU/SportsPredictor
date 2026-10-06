@@ -26,7 +26,7 @@ export default function BiggestUpsets({ results, sport }: { results: Result[]; s
             <Link
               key={r.game_id}
               href={`/games/${r.game_id}?sport=${sport}`}
-              className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-3 transition-shadow hover:shadow-md dark:border-neutral-800"
+              className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-3 transition-[box-shadow,transform] duration-150 ease-out hover:shadow-md active:scale-[0.98] dark:border-neutral-800"
             >
               <div className="flex items-center justify-between text-xs text-neutral-500">
                 <span>{formatGameDate(r.game_date)}</span>

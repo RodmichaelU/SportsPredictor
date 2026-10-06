@@ -52,14 +52,14 @@ export default async function HomePage() {
               <Link
                 key={sport.id}
                 href={`/predictions?sport=${sport.id}`}
-                className="rounded-full bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
+                className="rounded-full bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition duration-150 ease-out hover:bg-indigo-700 active:scale-[0.97]"
               >
                 See {sport.name} picks →
               </Link>
             ))}
             <Link
               href="/model"
-              className="rounded-full border border-neutral-300 px-5 py-2.5 text-sm font-semibold text-neutral-700 transition-colors hover:bg-white dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-900"
+              className="rounded-full border border-neutral-300 px-5 py-2.5 text-sm font-semibold text-neutral-700 transition duration-150 ease-out hover:bg-white dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-900 active:scale-[0.97]"
             >
               Explore the model
             </Link>
@@ -246,7 +246,7 @@ export default async function HomePage() {
             <Link
               key={sport.id}
               href={`/predictions?sport=${sport.id}`}
-              className="rounded-full bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
+              className="rounded-full bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition duration-150 ease-out hover:bg-indigo-700 active:scale-[0.97]"
             >
               {sport.name} predictions
             </Link>

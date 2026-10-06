@@ -12,13 +12,13 @@ export default function GameTicker({ picks, sport }: { picks: ValueBet[]; sport:
     // The browser's own horizontal scrollbar track read as a stray line
     // cutting across the hero section -- hidden via .no-scrollbar, but the
     // strip still scrolls fine with touch/trackpad/drag.
-    <div className="no-scrollbar w-full overflow-x-auto">
+    <div className="no-scrollbar w-full snap-x snap-mandatory overflow-x-auto">
       <div className="mx-auto flex w-max gap-3 px-6 pb-2">
         {picks.map(({ prediction: p, team, modelProb, marketProb, roi }) => (
           <Link
             key={p.game_id}
             href={`/games/${p.game_id}?sport=${sport}`}
-            className="flex w-44 shrink-0 flex-col gap-2 rounded-lg border border-neutral-200 bg-white p-3 shadow-sm transition-shadow hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900"
+            className="flex w-44 shrink-0 snap-start flex-col gap-2 rounded-lg border border-neutral-200 bg-white p-3 shadow-sm transition-[box-shadow,transform] duration-150 ease-out hover:shadow-md active:scale-[0.98] dark:border-neutral-800 dark:bg-neutral-900"
           >
             <div className="flex items-center gap-1.5">
               <TeamBadge team={p.away_team} sport={sport} size="sm" />
