@@ -168,11 +168,11 @@ def build_upcoming_features(season: int, week: int) -> pd.DataFrame:
 
     team_stats = _team_game_stats_frame(season, season)
     snapshot = _current_team_snapshot(team_stats)
-    elo_ratings = (
-        _elo_ratings_for_range(config.START_SEASON, season)
-        if not completed.empty
-        else pd.DataFrame(columns=["game_id", "home_pregame_elo", "away_pregame_elo"])
-    )
+    # Upcoming games have no game_id in the completed-games Elo simulation,
+    # so look up each team's current rating instead (joining on game_id here
+    # used to leave every live prediction's Elo blank).
+    history = ingest.load_games(config.START_SEASON, season)
+    ratings = elo.current_ratings(history, ingest.ELO_K, ingest.ELO_HOME_ADVANTAGE, season)
 
     def side(prefix: str, team_col: str, rest_col: str) -> pd.DataFrame:
         merged = target[["game_id", team_col, rest_col]].merge(
@@ -187,7 +187,8 @@ def build_upcoming_features(season: int, week: int) -> pd.DataFrame:
     away = side("away", "away_team", "away_rest")
 
     result = target.merge(home, on="game_id").merge(away, on="game_id")
-    result = result.merge(elo_ratings, on="game_id", how="left")
+    result["home_pregame_elo"] = result["home_team"].map(ratings).fillna(elo.INITIAL_RATING)
+    result["away_pregame_elo"] = result["away_team"].map(ratings).fillna(elo.INITIAL_RATING)
 
     result["closing_spread"] = -result["spread_line"]
     result["neutral_site"] = (result["location"] == "Neutral").astype(int)

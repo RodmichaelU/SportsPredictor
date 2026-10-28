@@ -80,6 +80,25 @@ def simulate(games: pd.DataFrame, k: float, home_advantage: float) -> pd.DataFra
     return pd.DataFrame(predictions)
 
 
+def current_ratings(games: pd.DataFrame, k: float, home_advantage: float, season: int) -> dict[str, float]:
+    """Each team's rating going into its next game of `season`: the rating
+    after its last completed game, regressed toward the mean if that game
+    was in an earlier season (the same carryover simulate() applies at a
+    season boundary). For predicting games that haven't been played yet --
+    simulate()'s pregame ratings only exist for completed games."""
+    predictions = simulate(games, k, home_advantage)
+    ratings: dict[str, tuple[int, float]] = {}
+    for row in predictions.itertuples():
+        home_post = row.home_pregame_elo + k * (row.home_win - row.home_win_prob)
+        away_post = row.away_pregame_elo + k * ((1 - row.home_win) - (1 - row.home_win_prob))
+        ratings[row.home_team] = (row.season, home_post)
+        ratings[row.away_team] = (row.season, away_post)
+    return {
+        team: rating if last_season == season else INITIAL_RATING + SEASON_CARRYOVER * (rating - INITIAL_RATING)
+        for team, (last_season, rating) in ratings.items()
+    }
+
+
 def score(predictions: pd.DataFrame) -> dict:
     y_true = predictions["home_win"]
     y_prob = predictions["home_win_prob"].clip(1e-6, 1 - 1e-6)
