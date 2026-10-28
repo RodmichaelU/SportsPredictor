@@ -12,15 +12,11 @@ open games at a time, team names spelled out e.g. "Stanford wins", close
 but not identical to CFBD's naming -- "App State" vs "Appalachian St.",
 "San José State" vs "San Jose St.", etc.).
 
-KXNBAGAME and KXNHLGAME also exist (confirmed live) but aren't wired into
-match_game() yet -- there's no sport features.py for either league yet to
-call it from (see src/sports/nba/features.py and .../nhl/features.py), and
-NHL had zero open markets when checked (offseason; the season starts in
-October, so this wasn't a lookup mistake). A spot check of NBA's open
-tickers found clean matches against nba_api's team abbreviations (BOS, DET,
-NYK, OKC, PHI, SAS all matched directly) -- promising, but not verified to
-the same depth as NFL/CFB's alias tables above, which were built by diffing
-the *complete* team lists, not a small sample.
+KXNBAGAME is live too: diffing the complete set of open NBA market codes
+(64 markets, all 30 teams) against nba_api's abbreviations found an exact
+match for every team, so NBA needs no alias table. KXNHLGAME exists
+(confirmed live) but isn't used yet -- there's no NHL features.py to call
+it from (see src/sports/nhl/features.py).
 
 Docs: https://docs.kalshi.com
 """
@@ -45,11 +41,9 @@ CODE_BASED_SPORTS = {"nfl", "nba", "nhl"}
 NFL_CODE_ALIASES = {"JAC": "JAX", "LAR": "LA"}
 
 # NBA/NHL equivalents of NFL_CODE_ALIASES: Kalshi's ticker code -> our own
-# ingest.py's team code. Empty for now -- only spot-checked (a handful of
-# NBA tickers matched nba_api's codes directly), not verified against the
-# complete team lists the way NFL_CODE_ALIASES was. Fill in during the full
-# build the same way: diff every Kalshi code against ingest.py's team list
-# and add whatever doesn't match.
+# ingest.py's team code. NBA's is empty because every code matched when the
+# full team lists were diffed. NHL's is empty because it hasn't been checked
+# yet: fill it in the same way when NHL's model layer is built.
 NBA_CODE_ALIASES: dict[str, str] = {}
 NHL_CODE_ALIASES: dict[str, str] = {}
 

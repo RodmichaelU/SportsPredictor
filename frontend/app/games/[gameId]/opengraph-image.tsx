@@ -10,7 +10,7 @@ export const contentType = "image/png";
 // opengraph-image files only ever receive route params, never the query
 // string (see Next's opengraph-image docs) -- so a shared game id has to be
 // resolved by trying each live sport's /explain in turn instead. Cheap: only
-// cfb and nfl have real predictions right now, so this is at most two calls.
+// cfb, nfl and nba have real predictions right now, so this is at most three calls.
 async function loadGame(gameId: string): Promise<{ sport: string; data: Explanation; logos: Record<string, string> } | null> {
   const sports = await getSports();
   for (const sport of sports.filter((s) => s.status === "live")) {

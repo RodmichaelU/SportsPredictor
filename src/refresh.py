@@ -15,18 +15,28 @@ Run: python -m src.refresh --all
 """
 
 import argparse
+from datetime import datetime, timedelta, timezone
 
 import config
 from src import predict, reconcile
 
-# Sports with a real model layer (features.py isn't a stub). NBA/NHL stay
-# out of this until their model layer exists -- see api/main.py's SPORTS
-# list, which is the other place this same "live" set is defined.
-LIVE_SPORTS = ["cfb", "nfl"]
+# Sports with a real model layer (features.py isn't a stub). NHL stays out
+# of this until its model layer exists -- see api/main.py's SPORTS list,
+# which is the other place this same "live" set is defined. NBA goes last:
+# it depends on ESPN's injury feed, and an outage there shouldn't stop the
+# football sports from refreshing first.
+LIVE_SPORTS = ["cfb", "nfl", "nba"]
 
 # Generous upper bound used only to stop searching for the nearest upcoming
-# week -- covers regular season + postseason/bowls for both sports.
-MAX_WEEK = {"cfb": 20, "nfl": 22}
+# week -- covers regular season + postseason/bowls for football, and the
+# ~25-week NBA regular season.
+MAX_WEEK = {"cfb": 20, "nfl": 22, "nba": 27}
+
+# Only freeze games tipping off within this window. NBA predictions use the
+# live injury report, which changes daily, so freezing a Sunday game on
+# Monday would lock in a stale report. With refresh running every 3 hours,
+# a 12-hour window still gives each game several chances to be frozen.
+PREDICTION_HORIZON = {"nba": timedelta(hours=12)}
 
 
 def _bust_cfb_cache(season: int) -> int:
@@ -60,6 +70,10 @@ def refresh_sport(sport: str, season: int) -> dict:
         _bust_cfb_cache(season)
     elif sport == "nfl":
         _bust_nfl_cache()
+    elif sport == "nba":
+        from src.sports.nba import ingest
+
+        ingest.bust_season_cache(season)
 
     # Only the nearest upcoming week: build_upcoming_features carries each
     # team's *current* rolling stats forward onto its next game, which is a
@@ -74,6 +88,10 @@ def refresh_sport(sport: str, season: int) -> dict:
     for week in range(1, MAX_WEEK[sport] + 1):
         rows = predict.generate_predictions(sport, season, week)
         if rows:
+            horizon = PREDICTION_HORIZON.get(sport)
+            if horizon:
+                cutoff = datetime.now(timezone.utc) + horizon
+                rows = [r for r in rows if datetime.fromisoformat(r["game_date"]) <= cutoff]
             inserted = predict.save_predictions(rows)
             week_predicted = week
             break
@@ -96,7 +114,7 @@ def main():
     args = parser.parse_args()
 
     if not args.all and not args.sport:
-        parser.error("pass --sport <cfb|nfl> or --all")
+        parser.error("pass --sport <cfb|nfl|nba> or --all")
 
     for sport in LIVE_SPORTS if args.all else [args.sport]:
         summary = refresh_sport(sport, args.season)

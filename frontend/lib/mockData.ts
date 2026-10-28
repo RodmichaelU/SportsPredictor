@@ -6,7 +6,7 @@ import { AccuracyByWeek, AccuracySummary, Calibration, CurveTarget, EloHistoryPo
 export const MOCK_SPORTS: Sport[] = [
   { id: "cfb", name: "College Football", status: "live" },
   { id: "nfl", name: "NFL", status: "live" },
-  { id: "nba", name: "NBA", status: "coming_soon" },
+  { id: "nba", name: "NBA", status: "live" },
   { id: "nhl", name: "NHL", status: "coming_soon" },
 ];
 

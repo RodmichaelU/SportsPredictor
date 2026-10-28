@@ -35,11 +35,11 @@ app.add_middleware(
 SPORTS = [
     {"id": "cfb", "name": "College Football", "status": "live"},
     {"id": "nfl", "name": "NFL", "status": "live"},
-    # Ingest + Elo are real and tested for these (src/sports/nba,
-    # src/sports/nhl); features.py -- the model layer -- is still a stub, so
-    # there's nothing to predict with yet. Listed here so the frontend can
-    # show them as placeholders rather than leaving them undiscoverable.
-    {"id": "nba", "name": "NBA", "status": "coming_soon"},
+    {"id": "nba", "name": "NBA", "status": "live"},
+    # Ingest + Elo are real and tested for NHL (src/sports/nhl); features.py
+    # -- the model layer -- is still a stub, so there's nothing to predict
+    # with yet. Listed here so the frontend can show it as a placeholder
+    # rather than leaving it undiscoverable.
     {"id": "nhl", "name": "NHL", "status": "coming_soon"},
 ]
 
@@ -293,6 +293,23 @@ def _feature_detail_line(feature: str, label: str, home_team: str, away_team: st
         return f"{favored} favored by {abs(spread):.1f} points"
     if feature in ("neutral_site", "conference_game", "div_game"):
         return f"{label}: {'Yes' if game_row.get(feature) else 'No'}"
+    if feature == "h2h_margin":
+        margin, meetings = game_row.get("h2h_margin"), game_row.get("h2h_games")
+        if _is_missing(margin) or not meetings:
+            return "No meetings this season or last"
+        leader = home_team if margin >= 0 else away_team
+        plural = "s" if meetings != 1 else ""
+        return f"Last {int(meetings)} meeting{plural}: {leader} by {abs(margin):.1f} on average"
+    if feature == "missing_eff_diff":
+        sides = []
+        for team, prefix in ((home_team, "home"), (away_team, "away")):
+            names = game_row.get(f"{prefix}_missing_players")
+            value = game_row.get(f"{prefix}_missing_eff")
+            if not names or _is_missing(value):
+                sides.append(f"{team}: no one out")
+            else:
+                sides.append(f"{team} out: {names} ({value:.0f} EFF/game)")
+        return "; ".join(sides)
 
     pair = models.raw_value_pair(feature, game_row)
     if pair is None or any(_is_missing(v) for v in pair):
@@ -411,9 +428,9 @@ def get_team_logos(sport: str = "cfb"):
     """team name/code -> logo URL. Sourced straight from each sport's data
     provider (CFBD's /teams, nflreadpy's load_teams()) rather than hosting
     logo assets ourselves -- free, no licensing/asset-management burden, and
-    matches this project's "free resources only" constraint. nba/nhl have no
-    team_logos() yet (their ingest modules predate this), so they safely
-    fall back to an empty map instead of erroring."""
+    matches this project's "free resources only" constraint. nhl has no
+    team_logos() yet (its ingest module predates this), so it safely falls
+    back to an empty map instead of erroring."""
     ingest = registry.ingest_module(sport)
     logos_fn = getattr(ingest, "team_logos", None)
     return logos_fn() if logos_fn else {}
@@ -425,8 +442,8 @@ def get_standings(sport: str = "cfb", season: int = Query(default=None)):
     conference + division). Sourced from each sport's ingest module's
     standings() -- derived from the same load_games() every other win/loss
     count in this app uses, so a team's record here always matches its
-    record shown on its own team page. nba/nhl have no standings() yet, so
-    they safely fall back to no groups instead of erroring."""
+    record shown on its own team page. nhl has no standings() yet, so it
+    safely falls back to no groups instead of erroring."""
     season = season or config.CURRENT_SEASON
     ingest = registry.ingest_module(sport)
     standings_fn = getattr(ingest, "standings", None)

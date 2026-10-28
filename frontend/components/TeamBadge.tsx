@@ -3,7 +3,7 @@ import { getTeamLogos } from "@/lib/api";
 // Real team logos (sourced from each sport's own free data provider -- see
 // getTeamLogos) when available; deterministic color + initials otherwise, so
 // every team still reads consistently even for teams the provider has no
-// logo for, or for nba/nhl which don't have a logo source wired up yet.
+// logo for, or for nhl which doesn't have a logo source wired up yet.
 const PALETTE = [
   "bg-rose-500", "bg-orange-500", "bg-amber-500", "bg-lime-600",
   "bg-emerald-500", "bg-teal-500", "bg-cyan-600", "bg-blue-500",
