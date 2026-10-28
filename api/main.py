@@ -235,7 +235,7 @@ def get_model_weights(sport: str = "cfb"):
 
     return {
         "sport": sport,
-        "model_version": predict.MODEL_VERSION,
+        "model_version": getattr(features, "MODEL_VERSION", predict.MODEL_VERSION),
         "trained_on_games": len(df),
         "weights": weights,
     }

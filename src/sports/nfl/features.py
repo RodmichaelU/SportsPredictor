@@ -21,9 +21,12 @@ from src.sports.nfl import ingest
 
 ROLLING_STAT_COLUMNS = ["off_epa", "def_epa_allowed"]
 DIFF_BASES = ROLLING_STAT_COLUMNS
-FEATURE_COLUMNS = ["elo_diff"] + [f"{b}_diff" for b in DIFF_BASES] + [
-    "rest_days_diff", "closing_spread", "neutral_site", "div_game",
-]
+# rest_days_diff, neutral_site and div_game are still built (and kept in the
+# feature table) but no longer fed to the model: a 2019-2025 walk-forward
+# (train on prior seasons, test each season) found dropping them improved
+# log loss in 6 of 7 seasons (0.6106 -> 0.6089) at equal accuracy -- the
+# closing spread already prices rest and venue, so they only added noise.
+FEATURE_COLUMNS = ["elo_diff"] + [f"{b}_diff" for b in DIFF_BASES] + ["closing_spread"]
 FEATURES_PATH = config.PROCESSED_DIR / "nfl_features.parquet"
 
 # Human-readable labels for FEATURE_COLUMNS, for the frontend's model-weights
@@ -32,23 +35,21 @@ FEATURE_LABELS = {
     "elo_diff": "Elo rating gap",
     "off_epa_diff": "Offensive EPA/play gap",
     "def_epa_allowed_diff": "Defensive EPA/play allowed gap",
-    "rest_days_diff": "Rest days gap",
     "closing_spread": "Closing betting spread",
-    "neutral_site": "Neutral site game",
-    "div_game": "Division game",
 }
+
+# Bumped whenever FEATURE_COLUMNS changes, so frozen predictions record which
+# model made them (predict.py falls back to its shared version otherwise).
+MODEL_VERSION = "v2-logistic-ridge-nfl"
 
 # Groups for the per-game explanation view (api/main.py's /explain). NFL's
 # feature set is small enough that nothing needs combining the way CFB's
-# correlated SP+/rolling-stat families do -- each group here is one feature,
-# except game context, grouped with CFB's presentation for consistency.
+# correlated SP+/rolling-stat families do -- each group here is one feature.
 FEATURE_GROUPS = [
     {"key": "market", "label": "Betting market", "features": ["closing_spread"]},
     {"key": "elo", "label": "Elo rating", "features": ["elo_diff"]},
     {"key": "offense_epa", "label": "Offensive EPA/play", "features": ["off_epa_diff"]},
     {"key": "defense_epa", "label": "Defensive EPA/play allowed", "features": ["def_epa_allowed_diff"]},
-    {"key": "rest", "label": "Rest days", "features": ["rest_days_diff"]},
-    {"key": "context", "label": "Game context", "features": ["neutral_site", "div_game"]},
 ]
 
 

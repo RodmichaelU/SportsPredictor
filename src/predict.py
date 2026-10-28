@@ -25,6 +25,7 @@ def generate_predictions(sport: str, season: int, week: int, backfill: bool = Fa
     validating reconcile.py end-to-end without waiting for a live week to
     finish. Real usage should leave this False."""
     features = registry.features_module(sport)
+    model_version = getattr(features, "MODEL_VERSION", MODEL_VERSION)
 
     history = features.load_feature_table()
     X_train = history[features.FEATURE_COLUMNS]
@@ -64,7 +65,7 @@ def generate_predictions(sport: str, season: int, week: int, backfill: bool = Fa
                 "home_win_prob": float(home_win_prob[i]),
                 "predicted_winner": winner,
                 "predicted_margin": float(predicted_margin[i]),
-                "model_version": MODEL_VERSION,
+                "model_version": model_version,
             }
         )
     return rows
