@@ -2,9 +2,10 @@
 line converted to an implied win probability -- the real test. Beating Elo
 is the floor; matching or beating the market is a genuinely high bar.
 
-Sport-agnostic like models.py, with one assumption baked in: every sport's
-feature table includes a "closing_spread" column (home-team-referenced) for
-the market comparison. cfb and nfl both satisfy this.
+Sport-agnostic like models.py. The market comparison uses a
+"closing_spread" column (home-team-referenced) when a sport's feature table
+has one -- cfb and nfl do; nba doesn't (no free historical NBA odds), so for
+it the report covers every held-out game and skips the market rows.
 
 Run: python -m src.evaluate [--sport cfb] [--test-season YEAR]
 """
@@ -69,19 +70,21 @@ def build_predictions(sport: str, test_season: int) -> dict:
     """Returns {model_name: (y_true, y_prob)}, all restricted to the games in
     the held-out season that have a closing line, so the comparison against
     the market is apples-to-apples rather than comparing full-season metrics
-    against a smaller market-only subset."""
+    against a smaller market-only subset. Sports with no closing_spread
+    column at all get every held-out game and no market entry."""
     features = registry.features_module(sport)
     df = features.load_feature_table()
     train, test = models.temporal_split(df, test_season)
     train, test = train.set_index("game_id"), test.set_index("game_id")
 
-    test_with_spread = test.dropna(subset=["closing_spread"])
+    has_market = "closing_spread" in test.columns
+    test_with_spread = test.dropna(subset=["closing_spread"]) if has_market else test
     ids = test_with_spread.index
 
     X_train, y_train_win = train[features.FEATURE_COLUMNS], train["home_win"]
     logistic = models.fit_logistic(X_train, y_train_win)
     xgb_clf = models.fit_xgb_classifier(X_train, y_train_win)
-    market = fit_market_model(train)
+    market = fit_market_model(train) if has_market else None
 
     X_test = test_with_spread[features.FEATURE_COLUMNS]
     y_test = test_with_spread["home_win"].values
@@ -92,15 +95,17 @@ def build_predictions(sport: str, test_season: int) -> dict:
     elo_test = elo_predictions[elo_predictions["season"] == test_season].set_index("game_id")
     elo_aligned = elo_test.loc[ids]
 
-    return {
+    predictions = {
         "Elo": (elo_aligned["home_win"].values, elo_aligned["home_win_prob"].values),
         "Logistic Regression": (y_test, logistic.predict_proba(X_test)[:, 1]),
         "XGBoost": (y_test, xgb_clf.predict_proba(X_test)[:, 1]),
-        "Market (closing spread)": (
+    }
+    if market is not None:
+        predictions["Market (closing spread)"] = (
             y_test,
             market.predict_proba(test_with_spread[["closing_spread"]])[:, 1],
-        ),
-    }
+        )
+    return predictions
 
 
 def main():
@@ -112,7 +117,9 @@ def main():
     predictions = build_predictions(args.sport, args.test_season)
     n = len(next(iter(predictions.values()))[0])
 
-    print(f"Evaluation on held-out season {args.test_season} ({args.sport}, {n} games with a closing line):\n")
+    has_market = "Market (closing spread)" in predictions
+    scope = "games with a closing line" if has_market else "games, no closing line available for this sport"
+    print(f"Evaluation on held-out season {args.test_season} ({args.sport}, {n} {scope}):\n")
     print(f"{'model':<26}{'log_loss':>10}{'brier':>10}{'auc':>10}{'accuracy':>10}{'ece':>10}")
     market_log_loss = None
     for name, (y_true, y_prob) in predictions.items():
@@ -122,13 +129,14 @@ def main():
         if name == "Market (closing spread)":
             market_log_loss = m["log_loss"]
 
-    print(f"\nVs. market on log loss (lower is better; market = {market_log_loss:.4f}):")
-    for name, (y_true, y_prob) in predictions.items():
-        if name == "Market (closing spread)":
-            continue
-        log_loss = models.classification_metrics(y_true, y_prob)["log_loss"]
-        verdict = "beats" if log_loss < market_log_loss else "loses to"
-        print(f"  {name}: {log_loss:.4f} ({verdict} the market)")
+    if has_market:
+        print(f"\nVs. market on log loss (lower is better; market = {market_log_loss:.4f}):")
+        for name, (y_true, y_prob) in predictions.items():
+            if name == "Market (closing spread)":
+                continue
+            log_loss = models.classification_metrics(y_true, y_prob)["log_loss"]
+            verdict = "beats" if log_loss < market_log_loss else "loses to"
+            print(f"  {name}: {log_loss:.4f} ({verdict} the market)")
 
     out_path = config.PROCESSED_DIR / f"calibration_{args.sport}_{args.test_season}.png"
     plot_calibration(predictions, out_path)
