@@ -503,14 +503,22 @@ def get_team(sport: str = "cfb", team: str = Query(...)):
     """Everything we know about one team: every game it's had a frozen
     prediction for (reused from the predictions store, not re-derived from
     the raw schedule -- see /teams), its record, and its Elo rating
-    trajectory through the current season."""
+    trajectory through the current season.
+
+    The record and Elo come from the sport's completed games, not the
+    predictions store, so a team with no frozen predictions yet (e.g. any
+    team linked from /standings early on) still gets a page, and its record
+    matches /standings exactly. 404 only for a team that has neither."""
     conn = store.get_connection()
     rows = conn.execute(
         "SELECT * FROM predictions WHERE sport = ? AND (home_team = ? OR away_team = ?) ORDER BY game_date",
         (sport, team, team),
     ).fetchall()
     conn.close()
-    if not rows:
+
+    ingest = registry.ingest_module(sport)
+    all_games = ingest.load_games(config.START_SEASON, config.CURRENT_SEASON)
+    if not rows and not ((all_games["home_team"] == team) | (all_games["away_team"] == team)).any():
         raise HTTPException(status_code=404, detail="No games on record for this team")
 
     try:
@@ -519,7 +527,6 @@ def get_team(sport: str = "cfb", team: str = Query(...)):
         market_index = {}
 
     games = []
-    wins = losses = 0
     for r in rows:
         market = kalshi.match_game(sport, r["home_team"], r["away_team"], market_index) if r["hit"] is None else None
         game = _prediction_dict(r, market)
@@ -533,10 +540,6 @@ def get_team(sport: str = "cfb", team: str = Query(...)):
             }
         )
         games.append(game)
-        if r["actual_winner"] == team:
-            wins += 1
-        elif r["actual_winner"] is not None:
-            losses += 1
 
     # Elo rating trajectory: re-simulate the whole sport (elo.py is cheap --
     # a plain dict-update loop, not a model fit) with this sport's already
@@ -544,8 +547,6 @@ def get_team(sport: str = "cfb", team: str = Query(...)):
     # games. Kept separate from the predictions-store loop above because Elo
     # ratings depend on the full chronological game sequence, not just this
     # team's games.
-    ingest = registry.ingest_module(sport)
-    all_games = ingest.load_games(config.START_SEASON, config.CURRENT_SEASON)
     k = getattr(ingest, "ELO_K")
     hfa = getattr(ingest, "ELO_HOME_ADVANTAGE")
     sim = elo.simulate(all_games, k, hfa)
@@ -572,6 +573,8 @@ def get_team(sport: str = "cfb", team: str = Query(...)):
         )
 
     current_elo = elo_history[-1]["rating_after"] if elo_history else None
+    wins = sum(1 for r in team_sim.itertuples() if (r.home_win == 1) == (r.home_team == team))
+    losses = len(team_sim) - wins
 
     return {
         "sport": sport,
