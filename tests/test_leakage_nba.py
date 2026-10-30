@@ -155,3 +155,33 @@ def test_rest_days_count_from_the_previous_game():
     prior = _team_results_before(row["home_team"], _game_date(row["game_id"]))
     gap = (pd.Timestamp(_game_date(row["game_id"])) - pd.Timestamp(prior["game_date"].iloc[-1])).days - 1
     assert row["home_rest_days"] == min(max(gap, 0), features.REST_CAP)
+
+
+def test_roster_strength_uses_only_earlier_games():
+    """Recompute roster strength by hand: of the players who suited up, keep
+    those who appeared for this team within its last ROTATION_WINDOW games
+    before this date (and not for another team since), value each from
+    earlier games only, and sum the top ROSTER_STRENGTH_TOP."""
+    df = _season_features()
+    players = _player_rows().sort_values("GAME_DATE")
+    sample = df[df["home_games_played"] >= 5].sample(25, random_state=2)
+    for row in sample.itertuples():
+        team, date = row.home_team, _game_date(row.game_id)
+        team_dates = sorted(players.loc[(players["season"] == TEST_SEASON) & (players["TEAM_ABBREVIATION"] == team)
+                                        & (players["GAME_DATE"] < date), "GAME_DATE"].unique())
+        window_start = team_dates[-features.ROTATION_WINDOW]  if len(team_dates) >= features.ROTATION_WINDOW else team_dates[0]
+        played = players[(players["GAME_ID"] == row.game_id) & (players["TEAM_ABBREVIATION"] == team)]["PLAYER_ID"]
+        values = []
+        for pid in played:
+            history = players[(players["PLAYER_ID"] == pid) & (players["GAME_DATE"] < date)]
+            this_season = history[history["season"] == TEST_SEASON]
+            if this_season.empty:
+                continue
+            last = this_season.iloc[-1]
+            if last["TEAM_ABBREVIATION"] != team or last["GAME_DATE"] < window_start:
+                continue
+            values.append(max(history["eff"].tail(features.PLAYER_VALUE_WINDOW).mean(), 0))
+        expected = sum(sorted(values, reverse=True)[: features.ROSTER_STRENGTH_TOP])
+        assert _is_close(row.home_roster_strength, expected, tol=1e-6), (
+            f"{row.game_id}: roster_strength {row.home_roster_strength} != leak-free recomputation {expected}"
+        )

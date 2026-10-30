@@ -13,10 +13,19 @@ calendar dates than the target game (teams never play twice in one day, so
     AST + STL + BLK - missed FG - missed FT - TOV) over their last
     PLAYER_VALUE_WINDOW games this season and last, so losing a star counts
     for far more than losing a bench player.
+  - Roster strength: the summed value of the top ROSTER_STRENGTH_TOP
+    available rotation players. Elo needs weeks to absorb an offseason
+    trade; this reflects one after the team's first game. A 2021-2025
+    walk-forward found it improved log loss in 4 of 5 seasons (0.6098 ->
+    0.6047) and accuracy 66.2% -> 67.3%, most in weeks 1-2 (59.9% ->
+    61.9%). Travel/time zones/3-in-4 and per-100-possession net rating
+    were tested the same way and added nothing over rest days and point
+    differential.
 
 Plus our own Elo (Phase 3, src/elo.py), rest days and the neutral-site flag.
 
-How "who's out" is known, and the one judgment call on leakage:
+How "who's out" is known (for both availability features), and the one
+judgment call on leakage:
   - Upcoming games: ESPN's live injury report. Every player listed "Out"
     with any game history is counted. "Day-To-Day" players are not, since
     most of them end up playing.
@@ -63,10 +72,12 @@ REST_CAP = 4  # rest days beyond this make no practical difference; also the sea
 # (k=2..6 all helped, 4 chosen), keeping the 2025 test season untouched.
 PRIOR_GAMES = 4
 MISSING_NAMES_SHOWN = 4
+ROSTER_STRENGTH_TOP = 8  # a typical playoff-style rotation
 
 FORM_COLUMNS = ["games_played", "win_pct", "avg_margin", "last10_win_pct", "last10_margin"]
-TEAM_COLUMNS = FORM_COLUMNS + ["rest_days", "missing_eff", "missing_players"]
-DIFF_BASES = ["win_pct", "avg_margin", "last10_win_pct", "last10_margin", "missing_eff", "rest_days"]
+AVAILABILITY_COLUMNS = ["game_id", "team", "missing_eff", "missing_players", "roster_strength"]
+TEAM_COLUMNS = FORM_COLUMNS + ["rest_days", "missing_eff", "missing_players", "roster_strength"]
+DIFF_BASES = ["win_pct", "avg_margin", "last10_win_pct", "last10_margin", "missing_eff", "roster_strength", "rest_days"]
 FEATURE_COLUMNS = ["elo_diff"] + [f"{b}_diff" for b in DIFF_BASES] + ["h2h_margin", "neutral_site"]
 FEATURES_PATH = config.PROCESSED_DIR / "nba_features.parquet"
 
@@ -79,10 +90,15 @@ FEATURE_LABELS = {
     "last10_win_pct_diff": "Last-10 win % gap",
     "last10_margin_diff": "Last-10 point differential gap",
     "missing_eff_diff": "Injured/out player value gap",
+    "roster_strength_diff": "Available roster strength gap",
     "rest_days_diff": "Rest days gap",
     "h2h_margin": "Recent head-to-head margin",
     "neutral_site": "Neutral site game",
 }
+
+# Bumped whenever FEATURE_COLUMNS changes, so frozen predictions record which
+# model made them. v1 (the shared default) had no roster strength.
+MODEL_VERSION = "v2-logistic-ridge-nba"
 
 # Groups for the per-game explanation view (api/main.py's /explain). Season
 # win % and point differential are strongly correlated (same for the last-10
@@ -92,7 +108,7 @@ FEATURE_GROUPS = [
     {"key": "elo", "label": "Elo rating", "features": ["elo_diff"]},
     {"key": "standings", "label": "Season record", "features": ["win_pct_diff", "avg_margin_diff"]},
     {"key": "form", "label": "Recent form (last 10)", "features": ["last10_win_pct_diff", "last10_margin_diff"]},
-    {"key": "injuries", "label": "Injuries", "features": ["missing_eff_diff"]},
+    {"key": "injuries", "label": "Roster & injuries", "features": ["roster_strength_diff", "missing_eff_diff"]},
     {"key": "h2h", "label": "Head-to-head", "features": ["h2h_margin"]},
     {"key": "rest", "label": "Rest days", "features": ["rest_days_diff"]},
     {"key": "context", "label": "Game context", "features": ["neutral_site"]},
@@ -240,52 +256,84 @@ def _summarize_missing(missing: list[tuple[float, str]]) -> tuple[float, str]:
     return sum(v for v, _ in missing), names
 
 
-def missing_from_box_scores(player_log: pd.DataFrame, season: int) -> pd.DataFrame:
-    """Historical absences: walk the season one date at a time, computing
-    every game's missing rotation players from the state *before* that
-    date, then folding that date's appearances into the state. One row per
-    (game_id, team) with missing_eff and missing_players."""
-    current = player_log[player_log["season"] == season]
-    roster: dict[str, dict[int, int]] = {}  # team -> {player_id: team game number of last appearance}
-    current_team: dict[int, str] = {}
-    value: dict[int, float] = {}
-    name: dict[int, str] = {}
-    team_games: dict[str, int] = {}
+class _RotationState:
+    """Who's in each team's rotation as of a point in the season: players
+    who appeared for the team this season, within its last ROTATION_WINDOW
+    games, and haven't since played for another team. Folded forward one
+    date at a time, so it only ever reflects strictly earlier games."""
 
-    rows = []
+    def __init__(self):
+        self.roster: dict[str, dict[int, int]] = {}  # team -> {player_id: team game number of last appearance}
+        self.current_team: dict[int, str] = {}
+        self.value: dict[int, float] = {}
+        self.name: dict[int, str] = {}
+        self.team_games: dict[str, int] = {}
+
+    def rotation(self, team: str) -> list[int]:
+        n = self.team_games.get(team, 0)
+        return [p for p, last in self.roster.get(team, {}).items() if n - last < ROTATION_WINDOW]
+
+    def roster_strength(self, team: str, available: list[int]) -> float:
+        """Sum of the ROSTER_STRENGTH_TOP highest values among available
+        rotation players. NaN before a team's first game of the season,
+        when there's no rotation to speak of yet."""
+        if self.team_games.get(team, 0) == 0:
+            return float("nan")
+        return sum(sorted((self.value[p] for p in available), reverse=True)[:ROSTER_STRENGTH_TOP])
+
+    def fold(self, appearances) -> None:
+        for (_, team), players in appearances:
+            self.team_games[team] = self.team_games.get(team, 0) + 1
+            for p in players.itertuples():
+                previous = self.current_team.get(p.player_id)
+                if previous is not None and previous != team:
+                    self.roster[previous].pop(p.player_id, None)
+                self.current_team[p.player_id] = team
+                self.roster.setdefault(team, {})[p.player_id] = self.team_games[team]
+                self.value[p.player_id] = p.value
+                self.name[p.player_id] = p.player
+
+
+def _season_days(player_log: pd.DataFrame, season: int):
+    current = player_log[player_log["season"] == season]
     for _, day in current.groupby("game_date", sort=True):
-        appearances = list(day.groupby(["game_id", "team"]))
+        yield list(day.groupby(["game_id", "team"]))
+
+
+def availability_from_box_scores(player_log: pd.DataFrame, season: int) -> pd.DataFrame:
+    """Historical availability: walk the season one date at a time,
+    computing every game's missing players and roster strength from the
+    rotation state *before* that date, then folding that date's
+    appearances in. One row per (game_id, team)."""
+    state = _RotationState()
+    rows = []
+    for appearances in _season_days(player_log, season):
         for (game_id, team), players in appearances:
             played = set(players["player_id"])
-            n = team_games.get(team, 0)
-            missing = [
-                (value[p], name[p])
-                for p, last in roster.get(team, {}).items()
-                if p not in played and n - last < ROTATION_WINDOW
-            ]
+            rotation = state.rotation(team)
+            missing = [(state.value[p], state.name[p]) for p in rotation if p not in played]
             eff, names = _summarize_missing(missing)
-            rows.append({"game_id": game_id, "team": team, "missing_eff": eff, "missing_players": names})
-        for (_, team), players in appearances:
-            team_games[team] = team_games.get(team, 0) + 1
-            for p in players.itertuples():
-                previous = current_team.get(p.player_id)
-                if previous is not None and previous != team:
-                    roster[previous].pop(p.player_id, None)
-                current_team[p.player_id] = team
-                roster.setdefault(team, {})[p.player_id] = team_games[team]
-                value[p.player_id] = p.value
-                name[p.player_id] = p.player
-
-    return pd.DataFrame(rows, columns=["game_id", "team", "missing_eff", "missing_players"])
+            strength = state.roster_strength(team, [p for p in rotation if p in played])
+            rows.append({"game_id": game_id, "team": team, "missing_eff": eff,
+                         "missing_players": names, "roster_strength": strength})
+        state.fold(appearances)
+    return pd.DataFrame(rows, columns=AVAILABILITY_COLUMNS)
 
 
-def missing_from_injury_report(targets: pd.DataFrame, player_log: pd.DataFrame, injuries: list[dict]) -> pd.DataFrame:
-    """Upcoming games: every "Out" player on the live report with any game
-    history this season or last, valued at their most recent value."""
+def availability_from_injury_report(
+    targets: pd.DataFrame, player_log: pd.DataFrame, season: int, injuries: list[dict]
+) -> pd.DataFrame:
+    """Upcoming games. Missing: every "Out" player on the live report with
+    any game history this season or last, valued at their most recent
+    value. Roster strength: the current rotation minus those players."""
+    state = _RotationState()
+    for appearances in _season_days(player_log, season):
+        state.fold(appearances)
+
     latest = player_log.drop_duplicates("player_id", keep="last")
-    by_name = {ingest.normalize_player_name(r.player): (r.value, r.player) for r in latest.itertuples()}
+    by_name = {ingest.normalize_player_name(r.player): (r.player_id, r.value, r.player) for r in latest.itertuples()}
 
-    out_by_team: dict[str, list[tuple[float, str]]] = {}
+    out_by_team: dict[str, list[tuple[int, float, str]]] = {}
     for injury in injuries:
         if injury["status"] != "Out":
             continue
@@ -296,12 +344,16 @@ def missing_from_injury_report(targets: pd.DataFrame, player_log: pd.DataFrame, 
     rows = []
     for t in targets.itertuples():
         for team in (t.home_team, t.away_team):
-            eff, names = _summarize_missing(out_by_team.get(team, []))
-            rows.append({"game_id": t.game_id, "team": team, "missing_eff": eff, "missing_players": names})
-    return pd.DataFrame(rows, columns=["game_id", "team", "missing_eff", "missing_players"])
+            out = out_by_team.get(team, [])
+            out_ids = {player_id for player_id, _, _ in out}
+            eff, names = _summarize_missing([(v, n) for _, v, n in out])
+            strength = state.roster_strength(team, [p for p in state.rotation(team) if p not in out_ids])
+            rows.append({"game_id": t.game_id, "team": team, "missing_eff": eff,
+                         "missing_players": names, "roster_strength": strength})
+    return pd.DataFrame(rows, columns=AVAILABILITY_COLUMNS)
 
 
-def _assemble(targets: pd.DataFrame, games: pd.DataFrame, missing: pd.DataFrame, completed: bool) -> pd.DataFrame:
+def _assemble(targets: pd.DataFrame, games: pd.DataFrame, availability: pd.DataFrame, completed: bool) -> pd.DataFrame:
     """targets: games to build features for (common schema + game_date).
     games: every completed game from config.START_SEASON on (Elo needs the
     full history; standings/form/h2h only ever look at this season and last)."""
@@ -316,13 +368,14 @@ def _assemble(targets: pd.DataFrame, games: pd.DataFrame, missing: pd.DataFrame,
         )
         form = _form_before(sides, log)
         result[f"{prefix}_pregame_elo"] = _elo_before(sides, timeline)
-        side_missing = targets[["game_id", f"{prefix}_team"]].merge(
-            missing, left_on=["game_id", f"{prefix}_team"], right_on=["game_id", "team"], how="left"
+        side = targets[["game_id", f"{prefix}_team"]].merge(
+            availability, left_on=["game_id", f"{prefix}_team"], right_on=["game_id", "team"], how="left"
         )
         for col in FORM_COLUMNS + ["rest_days"]:
             result[f"{prefix}_{col}"] = form[col].values
-        result[f"{prefix}_missing_eff"] = side_missing["missing_eff"].values
-        result[f"{prefix}_missing_players"] = side_missing["missing_players"].fillna("").values
+        result[f"{prefix}_missing_eff"] = side["missing_eff"].values
+        result[f"{prefix}_missing_players"] = side["missing_players"].fillna("").values
+        result[f"{prefix}_roster_strength"] = side["roster_strength"].values
 
     result = result.join(_head_to_head(targets, games))
     result["neutral_site"] = result["neutral_site"].astype(int)
@@ -340,8 +393,8 @@ def _build_season_features(season: int, games: pd.DataFrame) -> pd.DataFrame:
     targets = games[games["season"] == season]
     if targets.empty:
         return pd.DataFrame()
-    missing = missing_from_box_scores(_player_log(season), season)
-    return _assemble(targets, games[games["season"] <= season], missing, completed=True)
+    availability = availability_from_box_scores(_player_log(season), season)
+    return _assemble(targets, games[games["season"] <= season], availability, completed=True)
 
 
 def build_season_features(season: int) -> pd.DataFrame:
@@ -361,8 +414,8 @@ def build_upcoming_features(season: int, week: int) -> pd.DataFrame:
     ]
     if targets.empty:
         return pd.DataFrame()
-    missing = missing_from_injury_report(targets, _player_log(season), ingest.fetch_injuries())
-    return _assemble(targets, games, missing, completed=False)
+    availability = availability_from_injury_report(targets, _player_log(season), season, ingest.fetch_injuries())
+    return _assemble(targets, games, availability, completed=False)
 
 
 def build_features(start_season: int, end_season: int) -> pd.DataFrame:
