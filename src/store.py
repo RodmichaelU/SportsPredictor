@@ -1,6 +1,11 @@
 """SQLite prediction store: schema and connection helper shared by
 predict.py, reconcile.py, and api/main.py.
 
+market_snapshots is the same idea for Kalshi prices: one row per game per
+refresh run, captured only before the game starts. There's no free archive
+of historical NBA odds, so this builds one going forward -- once a season or
+so has accumulated, it can be trained on (see src/market_history.py).
+
 Predictions are append-only once written -- predict.py uses INSERT OR IGNORE
 keyed on (sport, game_id), so a prediction already on record is never
 overwritten even if the same week is predicted again. That's what makes the
@@ -33,11 +38,23 @@ CREATE TABLE IF NOT EXISTS predictions (
     reconciled_at TEXT,
     PRIMARY KEY (sport, game_id)
 );
+CREATE TABLE IF NOT EXISTS market_snapshots (
+    sport TEXT NOT NULL,
+    game_id TEXT NOT NULL,
+    captured_at TEXT NOT NULL,
+    game_date TEXT NOT NULL,
+    source TEXT NOT NULL,
+    home_probability REAL NOT NULL,
+    away_probability REAL NOT NULL,
+    volume REAL,
+    event_ticker TEXT,
+    PRIMARY KEY (sport, game_id, captured_at)
+);
 """
 
 
 def get_connection() -> sqlite3.Connection:
     conn = sqlite3.connect(config.PREDICTIONS_DB)
     conn.row_factory = sqlite3.Row
-    conn.execute(SCHEMA)
+    conn.executescript(SCHEMA)
     return conn

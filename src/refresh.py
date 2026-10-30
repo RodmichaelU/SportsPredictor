@@ -1,6 +1,7 @@
 """One-shot automatic refresh: re-pull the current season's data, freeze any
-new predictions, and reconcile finished games -- the same three steps that
-were previously run by hand (delete stale cache files, `predict.py` per
+new predictions, reconcile finished games, and save live Kalshi prices for
+games not yet started (src/market_history.py). The first three are the steps
+that were previously run by hand (delete stale cache files, `predict.py` per
 week, `reconcile.py`) whenever someone wanted an up-to-date accuracy read.
 
 Only the *current, in-progress* season's cache is busted -- completed
@@ -18,7 +19,7 @@ import argparse
 from datetime import datetime, timedelta, timezone
 
 import config
-from src import predict, reconcile
+from src import market_history, predict, reconcile
 
 # Sports with a real model layer (features.py isn't a stub). NHL stays out
 # of this until its model layer exists -- see api/main.py's SPORTS list,
@@ -97,12 +98,20 @@ def refresh_sport(sport: str, season: int) -> dict:
             break
 
     reconciled = reconcile.reconcile(sport)
+
+    # Best-effort: a Kalshi outage costs one snapshot, not the whole refresh.
+    try:
+        snapshots = market_history.snapshot(sport)
+    except Exception:
+        snapshots = 0
+
     return {
         "sport": sport,
         "season": season,
         "week": week_predicted,
         "predictions_saved": inserted,
         "results_reconciled": reconciled,
+        "market_snapshots": snapshots,
     }
 
 
@@ -123,7 +132,8 @@ def main():
         print(
             f"{summary['sport']} {summary['season']} ({week_label}): "
             f"{summary['predictions_saved']} new predictions saved, "
-            f"{summary['results_reconciled']} results reconciled"
+            f"{summary['results_reconciled']} results reconciled, "
+            f"{summary['market_snapshots']} market prices saved"
         )
 
 
