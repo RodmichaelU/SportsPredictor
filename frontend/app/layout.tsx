@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Barlow_Condensed, Geist, Geist_Mono } from "next/font/google";
 import { getSports } from "@/lib/api";
 import LeagueNav from "@/components/LeagueNav";
 import SecondaryNav from "@/components/SecondaryNav";
@@ -18,6 +18,12 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const displayFont = Barlow_Condensed({
+  variable: "--font-display-condensed",
+  subsets: ["latin"],
+  weight: ["600", "700", "800"],
+});
+
 export const metadata: Metadata = {
   title: { default: "Sports Predictor", template: "%s — Sports Predictor" },
   description: "ML-driven win probability and margin predictions, explained in plain English",
@@ -29,14 +35,16 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${displayFont.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-neutral-50 text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
-        <header className="sticky top-0 z-10 border-b border-neutral-200 bg-white/85 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/85">
-          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-3.5">
-            <Link href="/" className="flex items-center gap-2.5">
+      <body className="flex min-h-full flex-col overflow-x-clip bg-background text-neutral-900 dark:text-neutral-100">
+        <header className="z-20 bg-ink-950 md:sticky md:top-0 text-white shadow-[0_2px_0_0_var(--color-brand-600)]">
+          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-6 px-4 sm:px-6">
+            <Link href="/" className="flex items-center gap-2.5 py-3">
               <Logo className="h-8 w-8" />
-              <span className="text-lg font-semibold tracking-tight">Sports Predictor</span>
+              <span className="display text-2xl leading-none">
+                Sports<span className="text-brand-500">Predictor</span>
+              </span>
             </Link>
             <Suspense fallback={<div className="h-5 w-56" />}>
               <LeagueNav sports={sports} />
@@ -46,9 +54,17 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             <SecondaryNav />
           </Suspense>
         </header>
-        <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">{children}</main>
-        <footer className="border-t border-neutral-200 px-6 py-6 text-center text-xs text-neutral-400 dark:border-neutral-800">
-          Built for research and entertainment. Not betting advice.
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">{children}</main>
+        <footer className="bg-ink-950 px-4 py-8 text-neutral-400 sm:px-6">
+          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4">
+            <Link href="/" className="flex items-center gap-2">
+              <Logo className="h-6 w-6" />
+              <span className="display text-lg text-white">
+                Sports<span className="text-brand-500">Predictor</span>
+              </span>
+            </Link>
+            <span className="text-xs">Built for research and entertainment. Not betting advice.</span>
+          </div>
         </footer>
       </body>
     </html>

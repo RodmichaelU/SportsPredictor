@@ -71,6 +71,28 @@ def snapshot(sport: str) -> int:
     return len(rows)
 
 
+def latest_prices(sport: str) -> dict[str, dict]:
+    """Most recent saved snapshot per game, keyed by game_id. The API's
+    fallback when Kalshi can't be reached live: every snapshot was taken
+    before its game started (see snapshot()), so it's still a genuine
+    pre-game price, just an older one -- callers should surface captured_at."""
+    conn = store.get_connection()
+    rows = conn.execute(
+        """
+        SELECT m.game_id, m.home_probability, m.away_probability, m.captured_at
+        FROM market_snapshots m
+        JOIN (
+            SELECT game_id, MAX(captured_at) AS captured_at
+            FROM market_snapshots WHERE sport = ? GROUP BY game_id
+        ) latest ON latest.game_id = m.game_id AND latest.captured_at = m.captured_at
+        WHERE m.sport = ?
+        """,
+        (sport, sport),
+    ).fetchall()
+    conn.close()
+    return {str(r["game_id"]): dict(r) for r in rows}
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--sport", default="nba", choices=registry.SPORTS)

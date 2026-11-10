@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { Prediction } from "@/lib/types";
-import { formatGameDate, formatPercent } from "@/lib/format";
+import { formatPercent } from "@/lib/format";
+import SectionHeader, { Panel } from "./SectionHeader";
 import TeamBadge from "./TeamBadge";
 
 function ProbabilityRow({ label, value, colorClass }: { label: string; value: number; colorClass: string }) {
   return (
     <div className="flex items-center gap-2 text-xs">
       <span className="w-12 shrink-0 text-neutral-500">{label}</span>
-      <div className="h-2 flex-1 overflow-hidden rounded-full bg-neutral-100 dark:bg-neutral-800">
+      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-neutral-100 dark:bg-white/10">
         <div className={`h-full ${colorClass}`} style={{ width: `${Math.round(value * 100)}%` }} />
       </div>
       <span className="w-9 shrink-0 text-right font-semibold tabular-nums">{formatPercent(value)}</span>
@@ -30,43 +31,25 @@ export default function MarketDisagreements({ predictions, sport }: { prediction
   if (ranked.length === 0) return null;
 
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-      <div className="mb-1 text-sm font-semibold">Where we disagree most with the market</div>
-      <p className="mb-4 max-w-2xl text-sm text-neutral-500">
-        Both bars are the same thing -- the home team&apos;s win probability -- one from our model, one from
-        Kalshi&apos;s live, real-money market. A big gap means one side thinks it knows something the other
-        doesn&apos;t.
-      </p>
+    <section>
+      <SectionHeader title="Model vs. market" eyebrow="Biggest disagreements with Kalshi" />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {ranked.map(({ prediction: p, gap }) => (
-          <Link
-            key={p.game_id}
-            href={`/games/${p.game_id}?sport=${sport}`}
-            className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-3 transition-[box-shadow,transform] duration-150 ease-out hover:shadow-md active:scale-[0.98] dark:border-neutral-800"
-          >
-            <div className="flex items-center justify-between text-xs text-neutral-500">
-              <span>{formatGameDate(p.game_date)}</span>
-              <span className="font-semibold text-indigo-600 dark:text-indigo-400">
-                {Math.round(gap * 100)} pt gap
-              </span>
-            </div>
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-1.5 text-xs text-neutral-500">
-                <TeamBadge team={p.away_team} sport={sport} size="sm" />
-                {p.away_team}
-              </div>
-              <div className="flex items-center gap-1.5 text-sm font-semibold">
+          <Link key={p.game_id} href={`/games/${p.game_id}?sport=${sport}`} className="group">
+            <Panel className="flex h-full flex-col gap-3 p-5 transition-shadow group-hover:shadow-lg">
+              <div className="flex items-center gap-2">
                 <TeamBadge team={p.home_team} sport={sport} size="sm" />
-                {p.home_team}
+                <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+                  {p.home_team} <span className="font-normal text-neutral-500">vs {p.away_team}</span>
+                </span>
+                <span className="eyebrow shrink-0 text-[10px] text-brand-600 dark:text-brand-400">{Math.round(gap * 100)} pts</span>
               </div>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <ProbabilityRow label="Model" value={p.win_probability} colorClass="bg-indigo-600" />
+              <ProbabilityRow label="Model" value={p.win_probability} colorClass="bg-brand-600" />
               <ProbabilityRow label="Market" value={p.market_home_probability} colorClass="bg-neutral-500" />
-            </div>
+            </Panel>
           </Link>
         ))}
       </div>
-    </div>
+    </section>
   );
 }

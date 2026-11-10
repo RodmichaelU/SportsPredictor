@@ -27,6 +27,8 @@ export const MOCK_PREDICTIONS: Prediction[] = [
     predicted_margin: -3.5,
     model_version: MODEL_VERSION,
     market_home_probability: 0.39,
+    market_source: "live",
+    market_captured_at: null,
   },
   {
     game_id: "cfb-2026-w3-osu-mich",
@@ -42,6 +44,8 @@ export const MOCK_PREDICTIONS: Prediction[] = [
     predicted_margin: 6.5,
     model_version: MODEL_VERSION,
     market_home_probability: 0.68,
+    market_source: "live",
+    market_captured_at: null,
   },
   {
     game_id: "cfb-2026-w3-tex-lsu",
@@ -58,6 +62,8 @@ export const MOCK_PREDICTIONS: Prediction[] = [
     model_version: MODEL_VERSION,
     // No live Kalshi market matched -- demonstrates the "no market" case.
     market_home_probability: null,
+    market_source: null,
+    market_captured_at: null,
   },
   {
     game_id: "cfb-2026-w3-ore-psu",
@@ -73,6 +79,8 @@ export const MOCK_PREDICTIONS: Prediction[] = [
     predicted_margin: -4.0,
     model_version: MODEL_VERSION,
     market_home_probability: 0.35,
+    market_source: "live",
+    market_captured_at: null,
   },
   {
     game_id: "cfb-2026-w3-nd-tenn",
@@ -88,6 +96,8 @@ export const MOCK_PREDICTIONS: Prediction[] = [
     predicted_margin: 9.0,
     model_version: MODEL_VERSION,
     market_home_probability: 0.74,
+    market_source: "live",
+    market_captured_at: null,
   },
 ];
 
@@ -106,6 +116,8 @@ export const MOCK_RESULTS: Result[] = [
     predicted_margin: 4.5,
     model_version: MODEL_VERSION,
     market_home_probability: null,
+    market_source: null,
+    market_captured_at: null,
     home_score: 20,
     away_score: 27,
     actual_winner: "Clemson",
@@ -126,6 +138,8 @@ export const MOCK_RESULTS: Result[] = [
     predicted_margin: 3.0,
     model_version: MODEL_VERSION,
     market_home_probability: null,
+    market_source: null,
+    market_captured_at: null,
     home_score: 17,
     away_score: 24,
     actual_winner: "Florida State",
@@ -146,6 +160,8 @@ export const MOCK_RESULTS: Result[] = [
     predicted_margin: 8.5,
     model_version: MODEL_VERSION,
     market_home_probability: null,
+    market_source: null,
+    market_captured_at: null,
     home_score: 14,
     away_score: 31,
     actual_winner: "Utah",
@@ -166,6 +182,8 @@ export const MOCK_RESULTS: Result[] = [
     predicted_margin: 1.0,
     model_version: MODEL_VERSION,
     market_home_probability: null,
+    market_source: null,
+    market_captured_at: null,
     home_score: 23,
     away_score: 20,
     actual_winner: "Iowa",
@@ -186,6 +204,8 @@ export const MOCK_RESULTS: Result[] = [
     predicted_margin: 10.5,
     model_version: MODEL_VERSION,
     market_home_probability: null,
+    market_source: null,
+    market_captured_at: null,
     home_score: 21,
     away_score: 17,
     actual_winner: "Auburn",
@@ -248,6 +268,8 @@ export const MOCK_EXPLANATION: Explanation = {
   win_probability: 0.42,
   model_version: MODEL_VERSION,
   market_home_probability: 0.39,
+  market_source: "live",
+  market_captured_at: null,
   groups: [
     {
       key: "market",

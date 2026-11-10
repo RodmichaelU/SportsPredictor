@@ -1,9 +1,18 @@
 import Link from "next/link";
 import { getPredictions, getSports } from "@/lib/api";
+import { Prediction } from "@/lib/types";
+import { pickConfidence } from "@/lib/format";
 import PredictionCard from "@/components/PredictionCard";
 import ComingSoon from "@/components/ComingSoon";
+import FeaturedMatchup from "@/components/FeaturedMatchup";
 import MarketDisagreements from "@/components/MarketDisagreements";
+import PageBand from "@/components/PageBand";
+import SectionHeader from "@/components/SectionHeader";
 import Reveal from "@/components/Reveal";
+
+function dayKey(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
+}
 
 export default async function PredictionsPage(props: PageProps<"/predictions">) {
   const searchParams = await props.searchParams;
@@ -16,38 +25,54 @@ export default async function PredictionsPage(props: PageProps<"/predictions">) 
   }
 
   const predictions = await getPredictions(sport);
+  const strongest = [...predictions].sort((a, b) => pickConfidence(b) - pickConfidence(a))[0];
+
+  // Chronological, grouped by game day.
+  const days: { day: string; games: Prediction[] }[] = [];
+  for (const p of [...predictions].sort((a, b) => a.game_date.localeCompare(b.game_date))) {
+    const day = dayKey(p.game_date);
+    if (days.at(-1)?.day !== day) days.push({ day, games: [] });
+    days.at(-1)!.games.push(p);
+  }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Upcoming predictions</h1>
-        <p className="mt-1 max-w-2xl text-sm text-neutral-500">
-          Predictions are frozen before kickoff and never recomputed after the result is known.{" "}
-          <span className="font-medium text-neutral-700 dark:text-neutral-300">Model</span> is our own
-          prediction, trained on each team&apos;s historical stats (
-          <Link
-            href={`/model?sport=${sport}`}
-            className="underline decoration-neutral-300 underline-offset-2 hover:text-indigo-600 dark:hover:text-indigo-400"
-          >
-            see how
-          </Link>
-          ).{" "}
-          <span className="font-medium text-neutral-700 dark:text-neutral-300">Market</span> is the live
-          price from Kalshi, a real-money prediction market -- real people trading real dollars on the
-          outcome, not another model.
-        </p>
-      </div>
+    <div className="flex flex-col gap-12 sm:gap-16">
+      <PageBand
+        eyebrow={sportInfo?.name ?? sport.toUpperCase()}
+        title="This week's picks"
+        description={
+          <>
+            {predictions.length} upcoming games, each frozen before kickoff. Tap any game to see why the
+            model likes its pick, or{" "}
+            <Link href={`/model?sport=${sport}`} className="underline decoration-white/30 underline-offset-2 hover:text-brand-400">
+              how the model works
+            </Link>
+            .
+          </>
+        }
+        aside={
+          strongest && (
+            <FeaturedMatchup prediction={strongest} sport={sport} label="Strongest pick" className="w-full lg:w-[26rem]" />
+          )
+        }
+      />
 
       {predictions.length === 0 ? (
         <p className="text-sm text-neutral-500">No upcoming predictions for this sport yet.</p>
       ) : (
         <>
           <MarketDisagreements predictions={predictions} sport={sport} />
-          <Reveal className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {predictions.map((p) => (
-              <PredictionCard key={p.game_id} prediction={p} sport={sport} />
-            ))}
-          </Reveal>
+
+          {days.map(({ day, games }) => (
+            <Reveal as="section" key={day}>
+              <SectionHeader title={day} eyebrow={`${games.length} game${games.length === 1 ? "" : "s"}`} />
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {games.map((p) => (
+                  <PredictionCard key={p.game_id} prediction={p} sport={sport} />
+                ))}
+              </div>
+            </Reveal>
+          ))}
         </>
       )}
     </div>

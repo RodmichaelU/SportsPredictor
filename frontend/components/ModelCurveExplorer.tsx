@@ -40,7 +40,7 @@ export default function ModelCurveExplorer({
           <select
             value={feature}
             onChange={(e) => setFeature(e.target.value)}
-            className="rounded-md border border-neutral-300 bg-white px-2 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            className="rounded-md border border-neutral-300 bg-white px-2 py-1.5 text-sm dark:border-neutral-700 dark:bg-ink-900"
           >
             {featureOptions.map((f) => (
               <option key={f.feature} value={f.feature}>
@@ -57,7 +57,7 @@ export default function ModelCurveExplorer({
               onClick={() => setTarget(t)}
               className={`rounded px-3 py-1 font-medium transition-colors ${
                 target === t
-                  ? "bg-indigo-600 text-white"
+                  ? "bg-brand-600 text-white"
                   : "text-neutral-600 dark:text-neutral-300"
               }`}
             >
@@ -73,7 +73,7 @@ export default function ModelCurveExplorer({
           : "The ridge regressor's fitted line (blue, genuinely straight -- ridge is a linear model) against real historical games (dots) -- every other stat held at its typical value while this one varies."}
       </p>
 
-      <div className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
+      <div className="rounded-lg border border-neutral-200 p-4 dark:border-white/10">
         {loading || !data ? (
           <div className="flex h-[320px] items-center justify-center text-sm text-neutral-400">Loading…</div>
         ) : (

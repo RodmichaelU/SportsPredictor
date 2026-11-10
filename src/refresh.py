@@ -41,6 +41,23 @@ MAX_WEEK = {"cfb": 20, "nfl": 22, "nba": 27}
 # a 12-hour window still gives each game several chances to be frozen.
 PREDICTION_HORIZON = {"nba": timedelta(hours=12)}
 
+# A game missing an input its sport needs before freezing (FREEZE_REQUIRES in
+# its features module -- the betting line, for football) waits for a later
+# run instead of being frozen on an imputed value. Within this long of
+# kickoff it's frozen anyway, so a game whose line never posts (rare, small
+# conferences) still gets a pick rather than none.
+FREEZE_FALLBACK = timedelta(hours=6)
+
+
+def _ready_to_freeze(rows: list[dict], now: datetime) -> tuple[list[dict], int]:
+    """Split predictions into (freeze now, number deferred)."""
+    ready = [
+        r for r in rows
+        if not r.get("missing_inputs")
+        or datetime.fromisoformat(r["game_date"].replace("Z", "+00:00")) <= now + FREEZE_FALLBACK
+    ]
+    return ready, len(rows) - len(ready)
+
 
 def _bust_cfb_cache(season: int) -> int:
     from src.sports.cfb import client
@@ -91,15 +108,19 @@ def refresh_sport(sport: str, season: int) -> dict:
     # below: grading finished games doesn't depend on predicting new ones,
     # and skipping it is how results silently stop updating.
     inserted = 0
+    deferred = 0
     week_predicted = None
     try:
         for week in range(1, MAX_WEEK[sport] + 1):
             rows = predict.generate_predictions(sport, season, week)
             if rows:
+                now = datetime.now(timezone.utc)
                 horizon = PREDICTION_HORIZON.get(sport)
                 if horizon:
-                    cutoff = datetime.now(timezone.utc) + horizon
-                    rows = [r for r in rows if datetime.fromisoformat(r["game_date"]) <= cutoff]
+                    rows = [r for r in rows if datetime.fromisoformat(r["game_date"]) <= now + horizon]
+                # Games already frozen are ignored by save_predictions, so
+                # only count deferrals among games that aren't on record yet.
+                rows, deferred = _ready_to_freeze(predict.unfrozen(sport, rows), now)
                 inserted = predict.save_predictions(rows)
                 week_predicted = week
                 break
@@ -122,6 +143,7 @@ def refresh_sport(sport: str, season: int) -> dict:
         "season": season,
         "week": week_predicted,
         "predictions_saved": inserted,
+        "predictions_deferred": deferred,
         "results_reconciled": reconciled,
         "market_snapshots": snapshots,
     }
@@ -155,7 +177,9 @@ def main():
         week_label = f"week {week}" if week is not None else "no upcoming week found"
         print(
             f"{summary['sport']} {summary['season']} ({week_label}): "
-            f"{summary['predictions_saved']} new predictions saved, "
+            f"{summary['predictions_saved']} new predictions saved"
+            + (f" ({summary['predictions_deferred']} waiting on a betting line)" if summary["predictions_deferred"] else "")
+            + ", "
             f"{summary['results_reconciled']} results reconciled, "
             f"{summary['market_snapshots']} market prices saved"
         )

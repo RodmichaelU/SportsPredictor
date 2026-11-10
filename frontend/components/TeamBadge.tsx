@@ -7,7 +7,7 @@ import { getTeamLogos } from "@/lib/api";
 const PALETTE = [
   "bg-rose-500", "bg-orange-500", "bg-amber-500", "bg-lime-600",
   "bg-emerald-500", "bg-teal-500", "bg-cyan-600", "bg-blue-500",
-  "bg-violet-500", "bg-fuchsia-500", "bg-pink-500", "bg-indigo-500",
+  "bg-violet-500", "bg-fuchsia-500", "bg-pink-500", "bg-brand-500",
 ];
 
 function hashString(s: string): number {
@@ -29,6 +29,7 @@ const SIZES = {
   sm: "h-6 w-6 text-[10px]",
   md: "h-9 w-9 text-xs",
   lg: "h-12 w-12 text-sm",
+  xl: "h-16 w-16 text-lg sm:h-24 sm:w-24 sm:text-2xl",
 };
 
 export default async function TeamBadge({

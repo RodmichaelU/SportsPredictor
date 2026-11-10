@@ -5,6 +5,8 @@ import TeamBadge from "./TeamBadge";
 // A compact horizontal-scroll strip of this week's best value bets -- the
 // games where our model and the live market disagree most, weighted by
 // expected return rather than raw probability gap (see lib/valueBets.ts).
+// Styled as a scoreboard bar: dark tiles on the dark hero, model % where
+// the score would be.
 export default function GameTicker({ picks, sport }: { picks: ValueBet[]; sport: string }) {
   if (picks.length === 0) return null;
 
@@ -13,34 +15,29 @@ export default function GameTicker({ picks, sport }: { picks: ValueBet[]; sport:
     // cutting across the hero section -- hidden via .no-scrollbar, but the
     // strip still scrolls fine with touch/trackpad/drag.
     <div className="no-scrollbar w-full snap-x snap-mandatory overflow-x-auto">
-      <div className="mx-auto flex w-max gap-3 px-6 pb-2">
+      <div className="mx-auto flex w-max gap-px px-6 pb-2">
         {picks.map(({ prediction: p, team, modelProb, marketProb, roi }) => (
           <Link
             key={p.game_id}
             href={`/games/${p.game_id}?sport=${sport}`}
-            className="flex w-44 shrink-0 snap-start flex-col gap-2 rounded-lg border border-neutral-200 bg-white p-3 shadow-sm transition-[box-shadow,transform] duration-150 ease-out hover:shadow-md active:scale-[0.98] dark:border-neutral-800 dark:bg-neutral-900"
+            className="flex w-52 shrink-0 snap-start flex-col gap-2 border-t-2 border-transparent bg-ink-800 p-3 transition-colors duration-150 first:rounded-l-sm last:rounded-r-sm hover:border-brand-500 hover:bg-[#252932]"
           >
-            <div className="flex items-center gap-1.5">
-              <TeamBadge team={p.away_team} sport={sport} size="sm" />
-              <span
-                className={`truncate text-xs ${team === p.away_team ? "font-semibold text-neutral-800 dark:text-neutral-200" : "text-neutral-500 dark:text-neutral-400"}`}
-              >
-                {p.away_team}
+            {[p.away_team, p.home_team].map((t) => (
+              <div key={t} className="flex items-center gap-2">
+                <TeamBadge team={t} sport={sport} size="sm" />
+                <span className={`flex-1 truncate text-xs ${t === team ? "font-bold text-white" : "text-neutral-400"}`}>
+                  {t}
+                </span>
+                {t === team && (
+                  <span className="display text-xl text-white tabular-nums">{Math.round(modelProb * 100)}%</span>
+                )}
+              </div>
+            ))}
+            <div className="flex items-center justify-between border-t border-white/10 pt-2 text-[11px]">
+              <span className="text-neutral-400">Mkt {Math.round(marketProb * 100)}%</span>
+              <span className="eyebrow rounded-sm bg-emerald-500/15 px-1.5 py-0.5 text-[10px] text-emerald-400">
+                +{Math.round(roi * 100)}% value
               </span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <TeamBadge team={p.home_team} sport={sport} size="sm" />
-              <span
-                className={`truncate text-xs ${team === p.home_team ? "font-semibold text-neutral-800 dark:text-neutral-200" : "text-neutral-500 dark:text-neutral-400"}`}
-              >
-                {p.home_team}
-              </span>
-            </div>
-            <div className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
-              {team} {Math.round(modelProb * 100)}%
-            </div>
-            <div className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-              vs {Math.round(marketProb * 100)}% mkt · +{Math.round(roi * 100)}% value
             </div>
           </Link>
         ))}

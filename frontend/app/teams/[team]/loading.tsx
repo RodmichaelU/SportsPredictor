@@ -10,7 +10,7 @@ export default function Loading() {
           <div className="h-4 w-32 animate-pulse rounded bg-neutral-200 dark:bg-neutral-800" />
         </div>
       </div>
-      <div className="h-56 animate-pulse rounded-xl bg-neutral-200 dark:bg-neutral-800" />
+      <div className="h-56 animate-pulse rounded-md bg-neutral-200 dark:bg-neutral-800" />
       <CardGridSkeleton />
     </div>
   );

@@ -28,7 +28,7 @@ export default function ProbabilityDuel({
           <TeamBadge team={homeTeam} sport={sport} size="sm" />
         </span>
       </div>
-      <div className="flex h-8 overflow-hidden rounded-full border border-neutral-200 dark:border-neutral-800">
+      <div className="flex h-8 overflow-hidden rounded-full border border-neutral-200 dark:border-white/10">
         <div
           className="flex items-center justify-start bg-amber-500 pl-3 text-xs font-semibold text-white transition-all"
           style={{ width: `${awayPct}%` }}

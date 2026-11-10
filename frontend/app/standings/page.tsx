@@ -1,5 +1,6 @@
 import { getSports, getStandings } from "@/lib/api";
 import ComingSoon from "@/components/ComingSoon";
+import PageBand from "@/components/PageBand";
 import Reveal from "@/components/Reveal";
 import StandingsTable from "@/components/StandingsTable";
 
@@ -16,15 +17,18 @@ export default async function StandingsPage(props: PageProps<"/standings">) {
   const standings = await getStandings(sport);
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Standings</h1>
-        <p className="mt-1 max-w-2xl text-sm text-neutral-500">
+    <div className="flex flex-col gap-10">
+      <PageBand
+        eyebrow={sportInfo?.name ?? sport.toUpperCase()}
+        title="Standings"
+        description={
+          <>
           {sportInfo?.name ?? sport} win-loss records this season, grouped by{" "}
           {sport === "nfl" ? "division" : "conference"}. Computed from the same completed games every
           result and team page on this site uses.
-        </p>
-      </div>
+          </>
+        }
+      />
 
       {standings.groups.length === 0 ? (
         <p className="text-sm text-neutral-500">No standings on record for this sport yet.</p>

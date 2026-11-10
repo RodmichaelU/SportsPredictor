@@ -2,10 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getSports, getTeam } from "@/lib/api";
 import { Result, TeamGame } from "@/lib/types";
+import { pickConfidence } from "@/lib/format";
 import ComingSoon from "@/components/ComingSoon";
 import EloTrendChart from "@/components/EloTrendChart";
 import PredictionCard from "@/components/PredictionCard";
-import ResultCard from "@/components/ResultCard";
+import HitBadge from "@/components/HitBadge";
+import { BandStat } from "@/components/PageBand";
+import SectionHeader, { Panel } from "@/components/SectionHeader";
 import TeamBadge from "@/components/TeamBadge";
 import Reveal from "@/components/Reveal";
 
@@ -51,48 +54,126 @@ export default async function TeamPage(props: PageProps<"/teams/[team]">) {
   const upcoming = data.games.filter((g) => !isDecided(g));
   const decided = data.games.filter(isDecided).slice().reverse();
 
+  const hits = decided.filter((g) => g.hit).length;
+  const eloStart = data.elo_history[0]?.rating_before ?? null;
+  const eloDelta = eloStart !== null && data.current_elo !== null ? data.current_elo - eloStart : null;
+
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <Link href={`/teams?sport=${sport}`} className="text-sm text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200">
-          ← All teams
-        </Link>
-        <div className="mt-2 flex items-center gap-3">
-          <TeamBadge team={data.team} sport={sport} size="lg" />
-          <div>
-            <h1 className="text-2xl font-semibold">{data.team}</h1>
-            <p className="text-sm text-neutral-500">
-              {data.record.wins}-{data.record.losses} this season
-              {data.current_elo !== null && <> · Elo {Math.round(data.current_elo)}</>}
-            </p>
+    <div className="flex flex-col gap-14">
+      <section className="bleed relative -mt-8 overflow-hidden bg-ink-950 text-white">
+        <div aria-hidden className="broadcast-bg pointer-events-none absolute inset-0 opacity-70" />
+        <div className="bleed-inner relative py-8">
+          <Link href={`/teams?sport=${sport}`} className="eyebrow text-xs text-neutral-400 hover:text-white">
+            ‹ All teams
+          </Link>
+          <div className="mt-6 flex flex-wrap items-end justify-between gap-8">
+            <div className="flex min-w-0 items-center gap-5">
+              <TeamBadge team={data.team} sport={sport} size="xl" />
+              <div className="min-w-0">
+                <div className="eyebrow text-brand-400">{sportInfo?.name ?? sport.toUpperCase()}</div>
+                <h1 className="display text-5xl break-words sm:text-7xl">{data.team}</h1>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-x-10 gap-y-4">
+              <BandStat value={`${data.record.wins}-${data.record.losses}`} label="Record" />
+              {data.current_elo !== null && (
+                <BandStat
+                  value={
+                    <>
+                      {Math.round(data.current_elo)}
+                      {eloDelta !== null && (
+                        <span className={`ml-2 text-2xl ${eloDelta >= 0 ? "text-emerald-400" : "text-brand-500"}`}>
+                          {eloDelta >= 0 ? "▲" : "▼"}
+                          {Math.abs(Math.round(eloDelta))}
+                        </span>
+                      )}
+                    </>
+                  }
+                  label="Elo rating"
+                />
+              )}
+              {decided.length > 0 && (
+                <BandStat value={`${hits}/${decided.length}`} label="Model on their games" accent />
+              )}
+            </div>
           </div>
         </div>
-      </div>
-
-      <Reveal className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-        <div className="mb-3 text-sm font-semibold">Elo rating this season</div>
-        <EloTrendChart history={data.elo_history} currentRating={data.current_elo} />
-      </Reveal>
+      </section>
 
       {upcoming.length > 0 && (
-        <Reveal delayMs={100}>
-          <h2 className="text-lg font-semibold">Upcoming</h2>
-          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {upcoming.map((g) => (
+        <Reveal as="section">
+          <SectionHeader title="Up next" />
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {upcoming.slice(0, 3).map((g) => (
               <PredictionCard key={g.game_id} prediction={g} sport={sport} />
             ))}
           </div>
         </Reveal>
       )}
 
+      <Reveal as="section">
+        <SectionHeader title="Elo rating this season" />
+        <Panel className="p-4 sm:p-6">
+          <EloTrendChart history={data.elo_history} currentRating={data.current_elo} />
+        </Panel>
+      </Reveal>
+
       {decided.length > 0 && (
-        <Reveal delayMs={upcoming.length > 0 ? 200 : 100}>
-          <h2 className="text-lg font-semibold">Season so far</h2>
-          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {decided.map((g) => (
-              <ResultCard key={g.game_id} result={g} sport={sport} />
-            ))}
-          </div>
+        <Reveal>
+          <SectionHeader eyebrow={`${data.record.wins}-${data.record.losses}`} title="Season so far" />
+          <Panel className="overflow-x-auto p-0">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-neutral-200 text-left text-neutral-500 dark:border-white/10">
+                  {["Date", "Opponent", "Result", "Model pick", ""].map((h, i) => (
+                    <th key={i} className={`eyebrow px-3 py-2 text-[11px] font-bold sm:px-4 ${h === "Model pick" ? "hidden sm:table-cell" : ""}`}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {decided.map((g) => {
+                  const isHome = g.home_team === data.team;
+                  const opponent = isHome ? g.away_team : g.home_team;
+                  const won = g.actual_winner === data.team;
+                  const teamScore = isHome ? g.home_score : g.away_score;
+                  const oppScore = isHome ? g.away_score : g.home_score;
+                  return (
+                    <tr key={g.game_id} className="border-t border-neutral-100 even:bg-neutral-50/60 dark:border-white/5 dark:even:bg-white/[0.02]">
+                      <td className="px-3 py-2.5 sm:px-4 whitespace-nowrap text-neutral-500">
+                        {new Date(g.game_date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                      </td>
+                      <td className="px-3 py-2.5 sm:px-4">
+                        <Link
+                          href={`/teams/${encodeURIComponent(opponent)}?sport=${sport}`}
+                          className="flex items-center gap-2 hover:text-brand-600 dark:hover:text-brand-400"
+                        >
+                          <span className="w-4 text-xs text-neutral-400">{isHome ? "vs" : "@"}</span>
+                          <TeamBadge team={opponent} sport={sport} size="sm" />
+                          <span className="max-w-[7rem] truncate font-medium sm:max-w-none">{opponent}</span>
+                        </Link>
+                      </td>
+                      <td className="px-3 py-2.5 sm:px-4 whitespace-nowrap tabular-nums">
+                        <span className={`mr-2 font-bold ${won ? "text-emerald-600 dark:text-emerald-400" : "text-brand-600 dark:text-brand-400"}`}>
+                          {won ? "W" : "L"}
+                        </span>
+                        {teamScore}-{oppScore}
+                      </td>
+                      <td className="hidden px-4 py-2.5 whitespace-nowrap text-neutral-600 sm:table-cell dark:text-neutral-400">
+                        {g.predicted_winner} ({Math.round(pickConfidence(g) * 100)}%)
+                      </td>
+                      <td className="px-3 py-2.5 sm:px-4 text-right">
+                        <Link href={`/games/${g.game_id}?sport=${sport}`} className="inline-flex items-center gap-2">
+                          <HitBadge hit={g.hit} />
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </Panel>
         </Reveal>
       )}
     </div>

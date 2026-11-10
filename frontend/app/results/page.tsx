@@ -1,10 +1,13 @@
-import { getAccuracy, getAccuracyByWeek, getCalibration, getResults, getSports } from "@/lib/api";
+import Link from "next/link";
+import { getAccuracy, getAccuracyByWeek, getResults, getSports } from "@/lib/api";
+import { Result } from "@/lib/types";
+import { formatPercent } from "@/lib/format";
 import AccuracyByWeekChart from "@/components/AccuracyByWeekChart";
-import AccuracyCard from "@/components/AccuracyCard";
 import BiggestUpsets from "@/components/BiggestUpsets";
-import CalibrationChart from "@/components/CalibrationChart";
+import PageBand from "@/components/PageBand";
 import ResultCard from "@/components/ResultCard";
 import ComingSoon from "@/components/ComingSoon";
+import SectionHeader, { Panel } from "@/components/SectionHeader";
 import WeekFilter from "@/components/WeekFilter";
 import Reveal from "@/components/Reveal";
 
@@ -18,69 +21,101 @@ export default async function ResultsPage(props: PageProps<"/results">) {
     return <ComingSoon sport={sportInfo} />;
   }
 
-  const [results, accuracy, calibration, accuracyByWeek] = await Promise.all([
+  const [results, accuracy, accuracyByWeek] = await Promise.all([
     getResults(sport),
     getAccuracy(sport),
-    getCalibration(sport),
     getAccuracyByWeek(sport),
   ]);
 
   const weeks = [...new Set(results.map((r) => r.week))].sort((a, b) => b - a);
   const selectedWeek = searchParams.week ? Number(searchParams.week) : null;
   const visibleResults = selectedWeek ? results.filter((r) => r.week === selectedWeek) : results;
+  const hits = results.filter((r) => r.hit).length;
+
+  // Newest week first, each with its own record for the section header.
+  const multiSeason = new Set(visibleResults.map((r) => r.season)).size > 1;
+  const groups: { key: string; title: string; games: Result[] }[] = [];
+  for (const r of [...visibleResults].sort((a, b) => b.game_date.localeCompare(a.game_date))) {
+    const key = `${r.season}-${r.week}`;
+    let group = groups.find((g) => g.key === key);
+    if (!group) {
+      group = { key, title: multiSeason ? `${r.season} · Week ${r.week}` : `Week ${r.week}`, games: [] };
+      groups.push(group);
+    }
+    group.games.push(r);
+  }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Results</h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            Predicted vs. actual, scored against the prediction frozen before kickoff.
-          </p>
+    <div className="flex flex-col gap-12 sm:gap-16">
+      <PageBand
+        eyebrow={sportInfo?.name ?? sport.toUpperCase()}
+        title="Results"
+        description={
+          <>
+            Every pick, scored against the prediction frozen before kickoff. Wondering whether the
+            confidence numbers hold up?{" "}
+            <Link href={`/model?sport=${sport}#honesty`} className="underline decoration-white/30 underline-offset-2 hover:text-brand-400">
+              See the calibration checks
+            </Link>
+            .
+          </>
+        }
+        aside={
+          <div className="sm:text-right">
+            <div className="display text-8xl tabular-nums sm:text-9xl">
+              {accuracy.accuracy === null ? "—" : Math.round(accuracy.accuracy * 100)}
+              <span className="text-brand-500">%</span>
+            </div>
+            <div className="eyebrow text-xs text-neutral-400">
+              {hits}–{results.length - hits} · accuracy
+            </div>
+          </div>
+        }
+      />
+
+      {(accuracyByWeek.weeks.length >= 2 || results.some((r) => !r.hit)) && (
+        <Reveal className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[1.6fr_1fr]">
+          {accuracyByWeek.weeks.length >= 2 && (
+            <section>
+              <SectionHeader title="Week by week" />
+              <Panel className="p-4 sm:p-6">
+                <AccuracyByWeekChart weeks={accuracyByWeek.weeks} />
+              </Panel>
+            </section>
+          )}
+          <BiggestUpsets results={visibleResults} sport={sport} />
+        </Reveal>
+      )}
+
+      <section className="flex flex-col gap-12">
+        <div className="flex items-center justify-between gap-4 border-t border-neutral-200 pt-10 dark:border-white/10">
+          <h2 className="display text-3xl sm:text-4xl">Every graded pick</h2>
+          <WeekFilter weeks={weeks} />
         </div>
-        <WeekFilter weeks={weeks} />
-      </div>
 
-      <AccuracyCard summary={accuracy} />
-
-      {accuracyByWeek.weeks.length >= 2 && (
-        <Reveal className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-          <div className="mb-1 text-sm font-semibold">Accuracy by week</div>
-          <p className="mb-3 max-w-2xl text-sm text-neutral-500">
-            The same hit rate as the headline number above, broken out week by week -- whether the
-            model is trending up, down, or just bouncing around isn&apos;t visible in one cumulative
-            figure.
+        {groups.length === 0 ? (
+          <p className="text-sm text-neutral-500">
+            {results.length === 0 ? "No completed games for this sport yet." : "No completed games for that week."}
           </p>
-          <AccuracyByWeekChart weeks={accuracyByWeek.weeks} />
-        </Reveal>
-      )}
-
-      <BiggestUpsets results={visibleResults} sport={sport} />
-
-      {calibration.sample_size >= 10 && (
-        <Reveal className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-          <div className="mb-1 text-sm font-semibold">Is the model&apos;s confidence trustworthy?</div>
-          <p className="mb-3 max-w-2xl text-sm text-neutral-500">
-            Every completed game grouped by how confident the model was, compared to how often the
-            home team actually won in that group. Dots on the dashed line mean the model&apos;s stated
-            confidence matches reality -- e.g. games it called &quot;80% likely&quot; really won about
-            80% of the time. Dot size shows how many games are in that group.
-          </p>
-          <CalibrationChart bins={calibration.bins} />
-        </Reveal>
-      )}
-
-      {visibleResults.length === 0 ? (
-        <p className="text-sm text-neutral-500">
-          {results.length === 0 ? "No completed games for this sport yet." : "No completed games for that week."}
-        </p>
-      ) : (
-        <Reveal className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {visibleResults.map((r) => (
-            <ResultCard key={r.game_id} result={r} sport={sport} />
-          ))}
-        </Reveal>
-      )}
+        ) : (
+          groups.map((g) => {
+            const weekHits = g.games.filter((r) => r.hit).length;
+            return (
+              <Reveal as="section" key={g.key}>
+                <SectionHeader
+                  title={g.title}
+                  eyebrow={`${weekHits}–${g.games.length - weekHits} · ${formatPercent(weekHits / g.games.length)}`}
+                />
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                  {g.games.map((r) => (
+                    <ResultCard key={r.game_id} result={r} sport={sport} />
+                  ))}
+                </div>
+              </Reveal>
+            );
+          })
+        )}
+      </section>
     </div>
   );
 }
