@@ -41,6 +41,7 @@ export default async function ParlaysPage(props: PageProps<"/parlays">) {
   ]);
   const logos = Object.fromEntries(liveSports.map((s, i) => [s.id, logoMaps[i]]));
   const snapshotLeg = parlays?.tiers.flatMap((t) => t.legs).find((leg) => leg.market_source === "snapshot");
+  const hasEarly = parlays?.candidates.some((leg) => leg.early);
 
   return (
     <div className="flex flex-col gap-12 sm:gap-16">
@@ -96,6 +97,13 @@ export default async function ParlaysPage(props: PageProps<"/parlays">) {
                   minute: "2-digit",
                 })}
                 .
+              </>
+            )}
+            {hasEarly && (
+              <>
+                {" "}
+                Legs tagged <span className="font-semibold text-sky-600 dark:text-sky-400">Early</span> are NBA games more
+                than 12 hours out: predicted from today&apos;s data but not frozen yet, so injury news can still change them.
               </>
             )}{" "}
             For research and entertainment, not betting advice.

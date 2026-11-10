@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { getParlayRating } from "@/lib/api";
 import { LegVerdict, ParlayLeg, ParlayRating } from "@/lib/types";
+import { EarlyTag } from "./ParlayTierCard";
 
 const STAKE = 10;
 const MAX_LEGS = 12; // matches src/parlay.py MAX_RATED_LEGS
@@ -191,7 +192,8 @@ export default function ParlayBuilder({
             {visible.map((game) => (
               <li key={game.key} className="rounded-lg bg-white p-3 shadow-sm ring-1 ring-neutral-200/70 dark:bg-ink-900 dark:ring-white/10">
                 <div className="mb-2 flex items-center justify-between text-[11px] font-semibold tracking-wide text-neutral-500 uppercase">
-                  <span suppressHydrationWarning>
+                  <span className="flex items-center gap-2" suppressHydrationWarning>
+                    {game.home.early && <EarlyTag />}
                     {new Date(game.game_date).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                   </span>
                   <span>{game.sport.toUpperCase()}</span>
@@ -257,7 +259,10 @@ export default function ParlayBuilder({
                     <li key={gameKey(leg)} className="flex items-center gap-3 border-b border-neutral-100 py-2.5 last:border-0 dark:border-white/5">
                       <Logo src={logos[leg.sport]?.[leg.team]} team={leg.team} />
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-semibold">{leg.team}</div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="truncate text-sm font-semibold">{leg.team}</span>
+                          {leg.early && <EarlyTag />}
+                        </div>
                         <div className="truncate text-[11px] text-neutral-500">
                           {leg.is_home ? "vs" : "@"} {leg.opponent}
                           {rated && (

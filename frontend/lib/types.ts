@@ -189,6 +189,9 @@ export interface ParlayLeg {
   american_odds: number;
   market_source: "live" | "snapshot" | null;
   market_captured_at: string | null;
+  // A not-yet-frozen preview for a game just past the freeze horizon (NBA
+  // games 12-36h out): uses today's data, isn't graded, can still change.
+  early: boolean;
 }
 
 // One risk tier from /parlays (src/parlay.py). Unavailable tiers carry a
