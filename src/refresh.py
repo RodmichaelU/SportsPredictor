@@ -74,6 +74,21 @@ def _ready_to_freeze(rows: list[dict], now: datetime) -> tuple[list[dict], int]:
     return ready, len(rows) - len(ready)
 
 
+# How stale each in-progress-season CFBD response may get before a refresh
+# re-pulls it. Busting all five on every 3-hourly run would cost ~1,200
+# calls/month -- over the free tier's 1,000. Games (scores) and lines change
+# by the hour and are re-pulled every run; per-game advanced stats and SP+
+# only move once games finish, so daily is plenty; recruiting talent is
+# effectively fixed in-season. ~550 calls/month total.
+CFB_CACHE_MAX_AGE = {
+    "/games": timedelta(0),
+    "/lines": timedelta(0),
+    "/stats/game/advanced": timedelta(hours=20),
+    "/ratings/sp": timedelta(hours=20),
+    "/talent": timedelta(days=6),
+}
+
+
 def _bust_cfb_cache(season: int) -> int:
     from src.sports.cfb import client
     from src.sports.cfb.ingest import SEASON_TYPE
@@ -85,10 +100,11 @@ def _bust_cfb_cache(season: int) -> int:
         ("/talent", {"year": season}),
         ("/ratings/sp", {"year": season}),
     ]
+    now = datetime.now().timestamp()
     removed = 0
     for endpoint, params in endpoints:
         path = client.cache_file(endpoint, params)
-        if path.exists():
+        if path.exists() and now - path.stat().st_mtime >= CFB_CACHE_MAX_AGE[endpoint].total_seconds():
             path.unlink()
             removed += 1
     return removed

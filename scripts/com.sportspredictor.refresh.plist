@@ -18,9 +18,9 @@
     </array>
 
     <!-- Every 3 hours (00:05, 03:05, ... local time): frequent enough to
-         catch newly-finished games same day without burning meaningfully
-         into CFBD's 1,000 calls/month (each run costs ~5 CFB calls once the
-         season's cache is busted).
+         catch newly-finished games same day while staying well inside
+         CFBD's 1,000 calls/month (~550/month: see CFB_CACHE_MAX_AGE in
+         src/refresh.py for which responses are re-pulled how often).
 
          Calendar times rather than StartInterval on purpose: StartInterval's
          timer doesn't advance while the Mac sleeps, so a laptop closed
