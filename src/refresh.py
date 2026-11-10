@@ -16,6 +16,8 @@ Run: python -m src.refresh --all
 """
 
 import argparse
+import sys
+import traceback
 from datetime import datetime, timedelta, timezone
 
 import config
@@ -84,25 +86,35 @@ def refresh_sport(sport: str, season: int) -> dict:
     # make once that week is actually close -- so this waits and lets a
     # later run predict each week as it becomes the nearest one, instead of
     # front-running the whole rest of the season in one shot.
+    #
+    # A failure here (a data source timing out) must not stop reconcile
+    # below: grading finished games doesn't depend on predicting new ones,
+    # and skipping it is how results silently stop updating.
     inserted = 0
     week_predicted = None
-    for week in range(1, MAX_WEEK[sport] + 1):
-        rows = predict.generate_predictions(sport, season, week)
-        if rows:
-            horizon = PREDICTION_HORIZON.get(sport)
-            if horizon:
-                cutoff = datetime.now(timezone.utc) + horizon
-                rows = [r for r in rows if datetime.fromisoformat(r["game_date"]) <= cutoff]
-            inserted = predict.save_predictions(rows)
-            week_predicted = week
-            break
+    try:
+        for week in range(1, MAX_WEEK[sport] + 1):
+            rows = predict.generate_predictions(sport, season, week)
+            if rows:
+                horizon = PREDICTION_HORIZON.get(sport)
+                if horizon:
+                    cutoff = datetime.now(timezone.utc) + horizon
+                    rows = [r for r in rows if datetime.fromisoformat(r["game_date"]) <= cutoff]
+                inserted = predict.save_predictions(rows)
+                week_predicted = week
+                break
+    except Exception:
+        print(f"{sport}: predicting new games failed, still reconciling", file=sys.stderr)
+        traceback.print_exc()
 
     reconciled = reconcile.reconcile(sport)
 
-    # Best-effort: a Kalshi outage costs one snapshot, not the whole refresh.
+    # Best-effort: a Kalshi outage costs one snapshot, not the whole refresh
+    # -- but say so in the log, rather than reporting a plain "0 saved".
     try:
         snapshots = market_history.snapshot(sport)
-    except Exception:
+    except Exception as e:
+        print(f"{sport}: Kalshi snapshot failed: {type(e).__name__}: {e}", file=sys.stderr)
         snapshots = 0
 
     return {
@@ -125,8 +137,20 @@ def main():
     if not args.all and not args.sport:
         parser.error("pass --sport <cfb|nfl|nba> or --all")
 
+    # Each sport is isolated: one league's data source being down (CFBD DNS
+    # failure, an nflverse 504) shouldn't skip the sports after it. Still
+    # exits non-zero if anything failed, so launchd's "last exit code" and
+    # the log both show it.
+    failed = []
+    print(f"--- refresh {datetime.now().astimezone().isoformat(timespec='seconds')}")
     for sport in LIVE_SPORTS if args.all else [args.sport]:
-        summary = refresh_sport(sport, args.season)
+        try:
+            summary = refresh_sport(sport, args.season)
+        except Exception:
+            print(f"{sport}: refresh failed", file=sys.stderr)
+            traceback.print_exc()
+            failed.append(sport)
+            continue
         week = summary["week"]
         week_label = f"week {week}" if week is not None else "no upcoming week found"
         print(
@@ -135,6 +159,8 @@ def main():
             f"{summary['results_reconciled']} results reconciled, "
             f"{summary['market_snapshots']} market prices saved"
         )
+    if failed:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

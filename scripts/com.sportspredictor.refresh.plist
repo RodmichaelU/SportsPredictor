@@ -14,14 +14,30 @@
     <array>
         <string>/bin/bash</string>
         <string>-c</string>
-        <string>cd "/Users/rj/Desktop/Side Projects/SportsPredictor" &amp;&amp; exec .venv/bin/python -m src.refresh --all</string>
+        <string>cd "/Users/rj/Desktop/Side Projects/SportsPredictor" &amp;&amp; exec .venv/bin/python -u -m src.refresh --all</string>
     </array>
 
-    <!-- Every 3 hours: frequent enough to catch newly-finished games same
-         day without burning meaningfully into CFBD's 1,000 calls/month
-         (each run costs ~5 CFB calls once the season's cache is busted). -->
-    <key>StartInterval</key>
-    <integer>10800</integer>
+    <!-- Every 3 hours (00:05, 03:05, ... local time): frequent enough to
+         catch newly-finished games same day without burning meaningfully
+         into CFBD's 1,000 calls/month (each run costs ~5 CFB calls once the
+         season's cache is busted).
+
+         Calendar times rather than StartInterval on purpose: StartInterval's
+         timer doesn't advance while the Mac sleeps, so a laptop closed
+         overnight could go most of a day without a refresh. A missed
+         calendar slot instead runs once on wake (multiple missed slots are
+         coalesced into one run). -->
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict><key>Hour</key><integer>0</integer><key>Minute</key><integer>5</integer></dict>
+        <dict><key>Hour</key><integer>3</integer><key>Minute</key><integer>5</integer></dict>
+        <dict><key>Hour</key><integer>6</integer><key>Minute</key><integer>5</integer></dict>
+        <dict><key>Hour</key><integer>9</integer><key>Minute</key><integer>5</integer></dict>
+        <dict><key>Hour</key><integer>12</integer><key>Minute</key><integer>5</integer></dict>
+        <dict><key>Hour</key><integer>15</integer><key>Minute</key><integer>5</integer></dict>
+        <dict><key>Hour</key><integer>18</integer><key>Minute</key><integer>5</integer></dict>
+        <dict><key>Hour</key><integer>21</integer><key>Minute</key><integer>5</integer></dict>
+    </array>
 
     <!-- Also run once as soon as the agent is loaded, so `launchctl load`
          doesn't leave a 3-hour wait before the first refresh. -->
