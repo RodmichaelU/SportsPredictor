@@ -1,7 +1,7 @@
 import Link from "next/link";
 
-// Section title with the red tick and an optional "See all" link on the
-// right -- the standard module header on a sports front page.
+// Section title with a small red accent bar, optional muted note beside
+// it, and an optional "See all" link on the right.
 export default function SectionHeader({
   title,
   eyebrow,
@@ -16,10 +16,11 @@ export default function SectionHeader({
   size?: "sm" | "md";
 }) {
   return (
-    <div className="mb-3 flex items-end justify-between gap-4 border-b-2 border-neutral-900 pb-2 dark:border-white/80">
-      <div>
-        {eyebrow && <div className="eyebrow text-[11px] text-brand-600 dark:text-brand-400">{eyebrow}</div>}
+    <div className="mb-5 flex items-end justify-between gap-4">
+      <div className="flex items-baseline gap-3">
+        <span aria-hidden className="h-5 w-1 self-center rounded-full bg-brand-600" />
         <h2 className={`display ${size === "sm" ? "text-xl" : "text-3xl"}`}>{title}</h2>
+        {eyebrow && <span className="text-sm text-neutral-500">{eyebrow}</span>}
       </div>
       {href && (
         <Link href={href} className="eyebrow shrink-0 text-xs text-brand-600 hover:text-brand-700 dark:text-brand-400">

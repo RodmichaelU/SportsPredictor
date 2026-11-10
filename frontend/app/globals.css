@@ -77,12 +77,30 @@ body {
   margin-inline: auto;
 }
 
-/* Diagonal light streaks + a red glow: the broadcast-graphics backdrop
-   behind dark bands. Apply to an absolutely positioned layer. */
+/* A single soft red glow behind dark bands -- atmosphere without pattern
+   noise. Apply to an absolutely positioned layer. */
 .broadcast-bg {
-  background:
-    radial-gradient(ellipse 60% 90% at 85% 0%, rgba(217, 15, 32, 0.32), transparent 60%),
-    repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.025) 0 2px, transparent 2px 28px);
+  background: radial-gradient(ellipse 55% 100% at 90% 0%, rgba(217, 15, 32, 0.22), transparent 65%);
+}
+
+/* Auto-scrolling ticker (ScoreStrip): the track holds its content twice,
+   so sliding it left by exactly half loops seamlessly. Pauses while hovered
+   or keyboard-focused so a tile can actually be read and clicked. */
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.ticker-track {
+  animation: ticker linear infinite;
+}
+.ticker:hover .ticker-track,
+.ticker:focus-within .ticker-track {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ticker { overflow-x: auto; }
+  .ticker-track { animation: none; }
+  .ticker-dup { display: none; }
 }
 
 /* Horizontal-scroll strips (GameTicker) still scroll via touch/trackpad/
