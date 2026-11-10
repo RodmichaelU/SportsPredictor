@@ -29,6 +29,10 @@ export interface Prediction {
   // found for this game. Only populated for upcoming games; already-decided
   // games don't have a live market to compare against.
   market_home_probability: number | null;
+  // "live" when fetched from Kalshi for this request, "snapshot" when it's
+  // the latest pre-game price refresh.py saved (Kalshi unreachable live).
+  market_source: "live" | "snapshot" | null;
+  market_captured_at: string | null; // ISO timestamp; set for snapshots only
 }
 
 export interface Result extends Prediction {
@@ -79,7 +83,9 @@ export interface Explanation {
   win_probability: number;
   model_version: string;
   groups: ExplanationGroup[]; // sorted by |contribution| descending
-  market_home_probability: number | null; // live Kalshi price, null if no market matched
+  market_home_probability: number | null; // Kalshi price (live or latest snapshot), null if no market matched
+  market_source: "live" | "snapshot" | null;
+  market_captured_at: string | null;
 }
 
 export interface CurvePoint {
@@ -165,4 +171,44 @@ export interface WeeklyAccuracy {
 export interface AccuracyByWeek {
   sport: string;
   weeks: WeeklyAccuracy[]; // chronological; only weeks with at least one reconciled game
+}
+
+export type ParlayTierKey = "low" | "medium" | "high";
+
+export interface ParlayLeg {
+  game_id: string;
+  sport: string;
+  team: string; // the side this leg backs
+  opponent: string;
+  is_home: boolean;
+  game_date: string;
+  model_probability: number; // our model's chance this side wins
+  market_probability: number; // the market's implied chance (== the price)
+  edge: number; // model_probability - market_probability
+  decimal_odds: number;
+  american_odds: number;
+  market_source: "live" | "snapshot" | null;
+  market_captured_at: string | null;
+}
+
+// One risk tier from /parlays (src/parlay.py). Unavailable tiers carry a
+// reason instead of legs and totals.
+export interface ParlayTier {
+  tier: ParlayTierKey;
+  label: string;
+  available: boolean;
+  legs: ParlayLeg[];
+  reason?: string;
+  hit_probability?: number; // model's chance every leg hits (legs assumed independent)
+  market_hit_probability?: number;
+  decimal_odds?: number;
+  american_odds?: number;
+  expected_return?: number; // per $1 staked, if the model's probabilities are right
+}
+
+export interface Parlays {
+  sports: string[];
+  generated_at: string;
+  priced_games: number;
+  tiers: ParlayTier[];
 }

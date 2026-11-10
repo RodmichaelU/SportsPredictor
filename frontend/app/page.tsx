@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getAccuracy, getPredictions, getSports } from "@/lib/api";
+import { getAccuracy, getParlays, getPredictions, getSports } from "@/lib/api";
 import { pickConfidence } from "@/lib/format";
 import { rankByValue } from "@/lib/valueBets";
 import FeaturedMatchup from "@/components/FeaturedMatchup";
@@ -32,10 +32,12 @@ export default async function HomePage() {
   const primarySport = sports.find((s) => s.id === "cfb")?.id ?? sports[0]?.id ?? "cfb";
   const sportName = (id: string) => sports.find((s) => s.id === id)?.name ?? id.toUpperCase();
 
-  const [accuracies, predictionsBySport] = await Promise.all([
+  const [accuracies, predictionsBySport, parlays] = await Promise.all([
     Promise.all(liveSports.map((s) => getAccuracy(s.id))),
     Promise.all(liveSports.map((s) => getPredictions(s.id))),
+    getParlays(),
   ]);
+  const parlayTiers = parlays?.tiers.filter((t) => t.available) ?? [];
 
   const liveStats = accuracies.filter((a) => a.sample_size > 0);
 
@@ -138,6 +140,32 @@ export default async function HomePage() {
               ))}
             </div>
           </Panel>
+        </Reveal>
+      )}
+
+      {parlayTiers.length > 0 && (
+        <Reveal as="section">
+          <SectionHeader title="Parlay Picker" href="/parlays" linkLabel="Build a parlay" />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {parlayTiers.map((t) => (
+              <Link
+                key={t.tier}
+                href="/parlays"
+                className="group flex items-center justify-between gap-4 rounded-lg bg-white p-5 shadow-sm ring-1 ring-neutral-200/70 transition-shadow hover:shadow-lg dark:bg-ink-900 dark:ring-white/10"
+              >
+                <div>
+                  <div className="eyebrow text-xs text-neutral-500 group-hover:text-brand-600 dark:group-hover:text-brand-400">{t.label}</div>
+                  <div className="text-xs text-neutral-500">
+                    {t.legs.length} legs · {Math.round(t.hit_probability! * 100)}% to hit
+                  </div>
+                </div>
+                <div className="display text-4xl tabular-nums">
+                  {t.american_odds! > 0 ? "+" : ""}
+                  {t.american_odds!.toLocaleString()}
+                </div>
+              </Link>
+            ))}
+          </div>
         </Reveal>
       )}
 

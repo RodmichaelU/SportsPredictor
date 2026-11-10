@@ -13,14 +13,15 @@ const TABS = [
 
 // A visually distinct strip from the primary header above it -- section-level
 // tabs (like a document's own navigation) rather than another row of
-// site-level nav buttons. Returns nothing at all on the home page, where it
-// doesn't apply, rather than rendering an empty bordered strip.
+// site-level nav buttons. Returns nothing at all on the home page and the
+// cross-league Parlay Picker, where it doesn't apply, rather than rendering
+// an empty bordered strip.
 export default function SecondaryNav() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const query = searchParams.toString();
 
-  if (pathname === "/") return null;
+  if (pathname === "/" || pathname === "/parlays") return null;
 
   return (
     <div className="bg-ink-800">

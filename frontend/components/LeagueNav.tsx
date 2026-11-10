@@ -19,6 +19,9 @@ export default function LeagueNav({ sports }: { sports: Sport[] }) {
   const searchParams = useSearchParams();
   const currentSport = searchParams.get("sport");
   const onHome = pathname === "/";
+  // The Parlay Picker takes ?sport= as a filter too, but it's its own
+  // destination -- a league tab shouldn't light up there.
+  const onParlays = pathname === "/parlays";
 
   return (
     <nav className="no-scrollbar scroll-fade -mx-4 flex w-[calc(100%+2rem)] items-center gap-6 overflow-x-auto px-4 sm:mx-0 sm:w-auto sm:px-0">
@@ -29,7 +32,7 @@ export default function LeagueNav({ sports }: { sports: Sport[] }) {
         <Link
           key={sport.id}
           href={`/predictions?sport=${sport.id}`}
-          className={`inline-flex items-center gap-1.5 ${linkClass(!onHome && currentSport === sport.id)}`}
+          className={`inline-flex items-center gap-1.5 ${linkClass(!onHome && !onParlays && currentSport === sport.id)}`}
         >
           {sport.name}
           {sport.status === "coming_soon" && (
@@ -39,6 +42,14 @@ export default function LeagueNav({ sports }: { sports: Sport[] }) {
           )}
         </Link>
       ))}
+      <Link
+        href="/parlays"
+        className={`eyebrow shrink-0 rounded-full px-3 py-1.5 text-[11px] whitespace-nowrap transition-colors ${
+          onParlays ? "bg-brand-600 text-white" : "bg-white/10 text-white hover:bg-brand-600"
+        }`}
+      >
+        Parlay Picker
+      </Link>
     </nav>
   );
 }
