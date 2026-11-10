@@ -77,6 +77,7 @@ def test_every_leg_clears_its_tier_bars():
             assert leg["edge"] >= tier.min_edge
             assert leg["model_probability"] > leg["market_probability"]
             assert leg["edge"] <= parlay.MAX_EDGE
+            assert leg["market_probability"] <= tier.max_market_prob
             assert leg["game_id"] != "g14"
         assert t["hit_probability"] >= tier.min_hit_prob
 

@@ -58,16 +58,23 @@ class Tier:
     min_legs: int
     max_legs: int
     min_hit_prob: float  # the whole parlay's model hit chance must stay above this
+    # Legs priced above this are left out: a -500 favorite barely moves a
+    # parlay's payout, so a tier meant to pay has to skip them.
+    max_market_prob: float = MAX_MARKET_PROB
 
 
+# Edge minimums are sized for the tightest market we price: NFL, where the
+# model leans on the spread and most disagreements are 1-2 points. CFB's
+# gaps run larger, so its legs clear these easily and the payout weight --
+# not the edge bar -- is what separates the tiers there.
 TIERS = [
-    Tier("low", "Low risk", min_model_prob=0.65, min_edge=0.02, payout_weight=0.2,
+    Tier("low", "Low risk", min_model_prob=0.65, min_edge=0.01, payout_weight=0.2,
          min_legs=2, max_legs=3, min_hit_prob=0.40),
-    Tier("medium", "Medium risk", min_model_prob=0.55, min_edge=0.04, payout_weight=0.6,
-         min_legs=3, max_legs=4, min_hit_prob=0.18),
-    # Allows legs the model rates as slight underdogs (40%+) when the market
-    # rates them as bigger ones -- that gap is where the long payouts are.
-    Tier("high", "High risk", min_model_prob=0.40, min_edge=0.06, payout_weight=1.0,
+    Tier("medium", "Medium risk", min_model_prob=0.55, min_edge=0.01, payout_weight=0.6,
+         min_legs=3, max_legs=4, min_hit_prob=0.18, max_market_prob=0.75),
+    # Allows underdogs the model still gives a real chance (35%+) when the
+    # market rates them as bigger ones -- that gap is where the long payouts are.
+    Tier("high", "High risk", min_model_prob=0.35, min_edge=0.03, payout_weight=1.0,
          min_legs=4, max_legs=6, min_hit_prob=0.04),
 ]
 
@@ -121,7 +128,9 @@ def _leg_score(leg: dict, tier: Tier) -> float:
 def build_parlay(legs: list[dict], tier: Tier) -> dict:
     eligible = [
         leg for leg in legs
-        if leg["model_probability"] >= tier.min_model_prob and tier.min_edge <= leg["edge"] <= MAX_EDGE
+        if leg["model_probability"] >= tier.min_model_prob
+        and tier.min_edge <= leg["edge"] <= MAX_EDGE
+        and leg["market_probability"] <= tier.max_market_prob
     ]
     # Best side per game (both sides can't have a positive edge, but be explicit).
     best_by_game: dict[str, dict] = {}
