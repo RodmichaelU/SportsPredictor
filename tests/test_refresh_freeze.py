@@ -32,3 +32,11 @@ def test_sports_without_freeze_requirements_are_unaffected():
     # NBA rows carry an empty missing_inputs list (no FREEZE_REQUIRES).
     ready, deferred = _ready_to_freeze([_row("nba", 10, [])], NOW)
     assert len(ready) == 1 and deferred == 0
+
+
+def test_early_window_covers_only_games_past_the_freeze_horizon():
+    from src.refresh import _early_window
+
+    rows = [_row("frozen-soon", 6, []), _row("tomorrow", 24, []), _row("too-far", 60, []), _row("started", -1, [])]
+    early = _early_window(rows, NOW, timedelta(hours=12), timedelta(hours=36))
+    assert [r["game_id"] for r in early] == ["tomorrow"]

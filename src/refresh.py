@@ -41,12 +41,27 @@ MAX_WEEK = {"cfb": 20, "nfl": 22, "nba": 27}
 # a 12-hour window still gives each game several chances to be frozen.
 PREDICTION_HORIZON = {"nba": timedelta(hours=12)}
 
+# Games past the freeze horizon but inside this window get an *early*
+# prediction: computed every run with today's data, saved to
+# early_predictions (replaced each run), and used only to widen the Parlay
+# Picker's pool, flagged as early lines. Without it the NBA pool is just the
+# handful of games tipping off within 12 hours. Never frozen or graded.
+EARLY_HORIZON = {"nba": timedelta(hours=36)}
+
 # A game missing an input its sport needs before freezing (FREEZE_REQUIRES in
 # its features module -- the betting line, for football) waits for a later
 # run instead of being frozen on an imputed value. Within this long of
 # kickoff it's frozen anyway, so a game whose line never posts (rare, small
 # conferences) still gets a pick rather than none.
 FREEZE_FALLBACK = timedelta(hours=6)
+
+
+def _early_window(rows: list[dict], now: datetime, horizon: timedelta, early: timedelta) -> list[dict]:
+    """Rows starting after the freeze horizon but within the early window."""
+    return [
+        r for r in rows
+        if now + horizon < datetime.fromisoformat(r["game_date"].replace("Z", "+00:00")) <= now + early
+    ]
 
 
 def _ready_to_freeze(rows: list[dict], now: datetime) -> tuple[list[dict], int]:
@@ -109,11 +124,13 @@ def refresh_sport(sport: str, season: int) -> dict:
     # and skipping it is how results silently stop updating.
     inserted = 0
     deferred = 0
+    early_saved = None
     week_predicted = None
     try:
         for week in range(1, MAX_WEEK[sport] + 1):
             rows = predict.generate_predictions(sport, season, week)
             if rows:
+                week_rows = rows
                 now = datetime.now(timezone.utc)
                 horizon = PREDICTION_HORIZON.get(sport)
                 if horizon:
@@ -127,6 +144,21 @@ def refresh_sport(sport: str, season: int) -> dict:
     except Exception:
         print(f"{sport}: predicting new games failed, still reconciling", file=sys.stderr)
         traceback.print_exc()
+
+    # Best-effort, like the Kalshi snapshot: early lines only widen the
+    # Parlay Picker's pool, so a failure here costs that and nothing else.
+    if sport in EARLY_HORIZON and week_predicted is not None:
+        try:
+            pool = week_rows
+            latest = max(datetime.fromisoformat(r["game_date"].replace("Z", "+00:00")) for r in pool)
+            if latest < now + EARLY_HORIZON[sport]:
+                pool = pool + predict.generate_predictions(sport, season, week_predicted + 1)
+            early_rows = _early_window(
+                predict.unfrozen(sport, pool), now, PREDICTION_HORIZON.get(sport, timedelta(0)), EARLY_HORIZON[sport]
+            )
+            early_saved = predict.save_early_predictions(sport, early_rows)
+        except Exception as e:
+            print(f"{sport}: early predictions failed: {type(e).__name__}: {e}", file=sys.stderr)
 
     reconciled = reconcile.reconcile(sport)
 
@@ -144,6 +176,7 @@ def refresh_sport(sport: str, season: int) -> dict:
         "week": week_predicted,
         "predictions_saved": inserted,
         "predictions_deferred": deferred,
+        "early_predictions": early_saved,
         "results_reconciled": reconciled,
         "market_snapshots": snapshots,
     }
@@ -180,7 +213,8 @@ def main():
             f"{summary['predictions_saved']} new predictions saved"
             + (f" ({summary['predictions_deferred']} waiting on a betting line)" if summary["predictions_deferred"] else "")
             + ", "
-            f"{summary['results_reconciled']} results reconciled, "
+            + (f"{summary['early_predictions']} early lines, " if summary["early_predictions"] is not None else "")
+            + f"{summary['results_reconciled']} results reconciled, "
             f"{summary['market_snapshots']} market prices saved"
         )
     if failed:

@@ -92,6 +92,28 @@ def unfrozen(sport: str, rows: list[dict]) -> list[dict]:
     return [r for r in rows if r["game_id"] not in frozen]
 
 
+def save_early_predictions(sport: str, rows: list[dict]) -> int:
+    """Replace this sport's early (not-yet-frozen) predictions with `rows`.
+    Unlike save_predictions this overwrites: an early line is a preview that
+    should always reflect the latest data, and only feeds the Parlay Picker."""
+    conn = store.get_connection()
+    with conn:
+        conn.execute("DELETE FROM early_predictions WHERE sport = ?", (sport,))
+        conn.executemany(
+            """
+            INSERT OR REPLACE INTO early_predictions
+                (sport, game_id, season, week, home_team, away_team, game_date,
+                 predicted_at, home_win_prob, predicted_winner, predicted_margin, model_version)
+            VALUES
+                (:sport, :game_id, :season, :week, :home_team, :away_team, :game_date,
+                 :predicted_at, :home_win_prob, :predicted_winner, :predicted_margin, :model_version)
+            """,
+            rows,
+        )
+    conn.close()
+    return len(rows)
+
+
 def save_predictions(rows: list[dict]) -> int:
     if not rows:
         return 0

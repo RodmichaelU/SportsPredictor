@@ -147,10 +147,41 @@ def _market_prices(sport: str, rows) -> dict[str, dict]:
     return prices
 
 
+def _early_predictions(sport: str) -> list[dict]:
+    """Not-yet-frozen predictions for games just past the sport's freeze
+    horizon (see refresh.EARLY_HORIZON), with market prices, flagged
+    early=True. Parlay Picker pool only -- never graded or shown as the
+    game's prediction. Skips any game that has since been frozen, so a game
+    is never in the pool twice."""
+    conn = store.get_connection()
+    rows = conn.execute(
+        """
+        SELECT * FROM early_predictions e
+        WHERE e.sport = ?
+          AND NOT EXISTS (SELECT 1 FROM predictions p WHERE p.sport = e.sport AND p.game_id = e.game_id)
+        ORDER BY game_date
+        """,
+        (sport,),
+    ).fetchall()
+    conn.close()
+    markets = _market_prices(sport, rows)
+    return [{**_prediction_dict(r, markets.get(str(r["game_id"]))), "early": True} for r in rows]
+
+
+def _parlay_pool(sports: list[str]) -> list[dict]:
+    """Every upcoming prediction the Parlay Picker can draw from: frozen
+    predictions plus early lines."""
+    pool = []
+    for sport in sports:
+        pool.extend(get_predictions(sport, week=None))
+        pool.extend(_early_predictions(sport))
+    return pool
+
+
 @app.get("/parlays")
 def get_parlays(sports: str | None = None, horizon_days: int = Query(default=7, ge=1, le=14)):
     """Parlays at three risk tiers (see src/parlay.py), built from every
-    upcoming prediction with a market price. `sports` is a comma-separated
+    upcoming prediction with a market price, including early lines. `sports` is a comma-separated
     filter (e.g. "cfb,nfl"); default is every live sport, so legs can mix
     leagues."""
     live = [s["id"] for s in SPORTS if s["status"] == "live"]
@@ -158,10 +189,7 @@ def get_parlays(sports: str | None = None, horizon_days: int = Query(default=7, 
     if not wanted:
         raise HTTPException(status_code=400, detail=f"sports must be from: {', '.join(live)}")
 
-    predictions = []
-    for sport in wanted:
-        predictions.extend(get_predictions(sport, week=None))
-    return {"sports": wanted, **parlay.build_parlays(predictions, horizon_days=horizon_days)}
+    return {"sports": wanted, **parlay.build_parlays(_parlay_pool(wanted), horizon_days=horizon_days)}
 
 
 @app.get("/parlay-rating")
@@ -184,7 +212,7 @@ def get_parlay_rating(legs: str = Query(..., description="comma-separated sport:
     for sport in {sport for sport, _, _ in picks}:
         if sport not in live:
             raise HTTPException(status_code=400, detail=f"Unknown sport '{sport}'")
-        for leg in parlay.candidate_legs(get_predictions(sport, week=None), datetime.now(timezone.utc), timedelta(days=14)):
+        for leg in parlay.candidate_legs(_parlay_pool([sport]), datetime.now(timezone.utc), timedelta(days=14)):
             candidates[(leg["sport"], leg["game_id"], leg["is_home"])] = leg
 
     chosen = []

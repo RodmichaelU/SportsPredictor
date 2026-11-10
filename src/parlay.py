@@ -116,6 +116,9 @@ def candidate_legs(predictions: list[dict], now: datetime, horizon: timedelta) -
                     "american_odds": american_odds(1 / q),
                     "market_source": p.get("market_source"),
                     "market_captured_at": p.get("market_captured_at"),
+                    # A not-yet-frozen preview (refresh.EARLY_HORIZON), e.g. an
+                    # NBA game tomorrow whose injury report can still change.
+                    "early": bool(p.get("early")),
                 }
             )
     return legs
@@ -210,8 +213,8 @@ def build_parlay(legs: list[dict], tier: Tier) -> dict:
     if not value:
         overpriced = sum(leg["edge"] <= 0 for leg in chosen)
         out["note"] = (
-            "No value parlay for this tier right now, so these are the model's likeliest picks instead. "
-            f"The market prices {overpriced} of {len(chosen)} legs higher than the model rates them."
+            "Nothing clears this tier's value bar right now, so these are the model's likeliest picks; "
+            f"the market prices {overpriced} of {len(chosen)} higher than the model rates them."
         )
     return out
 

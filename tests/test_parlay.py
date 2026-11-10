@@ -179,3 +179,10 @@ def test_rating_rejects_invalid_slips():
     both_sides = parlay.candidate_legs([_game(200, 0.6, 0.5)], NOW, timedelta(days=7))
     with pytest.raises(ValueError):
         parlay.rate_parlay(both_sides)  # both sides of one game
+
+
+def test_early_lines_are_flagged_through_to_legs():
+    early = {**_game(300, 0.70, 0.60), "early": True}
+    legs = parlay.candidate_legs([early, _game(301, 0.70, 0.60)], NOW, timedelta(days=7))
+    by_game = {leg["game_id"]: leg["early"] for leg in legs}
+    assert by_game == {"g300": True, "g301": False}
