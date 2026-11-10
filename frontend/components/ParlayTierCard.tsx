@@ -59,6 +59,14 @@ export default function ParlayTierCard({ tier }: { tier: ParlayTier }) {
         </span>
       </div>
       <p className="px-5 pt-1 text-xs leading-relaxed text-neutral-500">{style.blurb}</p>
+      {tier.available && !tier.value && (
+        <div className="mx-5 mt-3 rounded-md bg-neutral-100 px-3 py-2 text-xs text-neutral-600 dark:bg-white/5 dark:text-neutral-400">
+          <span className="eyebrow mr-1.5 rounded-sm bg-neutral-900 px-1.5 py-px text-[10px] text-white dark:bg-white/15">
+            No value found
+          </span>
+          {tier.note}
+        </div>
+      )}
 
       {!tier.available ? (
         <p className="m-5 rounded-md bg-neutral-50 p-4 text-sm text-neutral-500 dark:bg-white/5">{tier.reason}</p>
@@ -112,7 +120,11 @@ export default function ParlayTierCard({ tier }: { tier: ParlayTier }) {
 
           <div className="mt-auto border-t border-neutral-100 px-5 py-3 text-xs text-neutral-500 dark:border-white/5">
             If the model is right, this returns{" "}
-            <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+            <span
+              className={`font-semibold ${
+                tier.expected_return! >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-brand-600 dark:text-brand-400"
+              }`}
+            >
               {tier.expected_return! >= 0 ? "+" : ""}
               {Math.round(tier.expected_return! * 100)}%
             </span>{" "}

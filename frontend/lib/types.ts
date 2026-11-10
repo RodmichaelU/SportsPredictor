@@ -197,8 +197,12 @@ export interface ParlayTier {
   tier: ParlayTierKey;
   label: string;
   available: boolean;
+  // false for a fallback: no legs cleared the tier's value bar, so these are
+  // the model's likeliest picks regardless of price (see src/parlay.py).
+  value: boolean;
   legs: ParlayLeg[];
   reason?: string;
+  note?: string; // set on fallback parlays, explaining why it isn't a value pick
   hit_probability?: number; // model's chance every leg hits (legs assumed independent)
   market_hit_probability?: number;
   decimal_odds?: number;

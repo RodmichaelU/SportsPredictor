@@ -18,7 +18,7 @@ const HOW_IT_WORKS = [
   },
   {
     title: "Only underpriced legs",
-    body: "Every leg is one the model rates above the market's price. Gaps over 15 points are skipped as likely data problems, not edges.",
+    body: "Legs are ones the model rates above the market's price, and gaps over 15 points are skipped as likely data problems. If none qualify, the tier is marked \"No value found\".",
   },
   {
     title: "One dial per tier",
@@ -45,7 +45,8 @@ export default async function ParlaysPage(props: PageProps<"/parlays">) {
         description={
           <>
             Three parlays built from this week&apos;s predictions, from a safe two-leg combo to a long shot.
-            Every leg is a game where the model thinks the market is underpricing the pick.
+            Legs are games where the model thinks the market is underpricing the pick; when a slate has none,
+            a tier shows the model&apos;s likeliest picks instead and says so.
           </>
         }
       >

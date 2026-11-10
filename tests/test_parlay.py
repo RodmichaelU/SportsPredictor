@@ -71,6 +71,7 @@ def test_every_leg_clears_its_tier_bars():
     for key, t in _tiers().items():
         tier = by_key[key]
         assert t["available"], f"{key} should be buildable from this slate"
+        assert t["value"], f"{key} should be a value parlay, not the fallback"
         assert tier.min_legs <= len(t["legs"]) <= tier.max_legs
         for leg in t["legs"]:
             assert leg["model_probability"] >= tier.min_model_prob
@@ -113,3 +114,22 @@ def test_american_odds_conversion():
     assert parlay.american_odds(2.0) == 100
     assert parlay.american_odds(3.5) == 250
     assert parlay.american_odds(1.5) == -200
+
+
+def test_no_value_slate_falls_back_to_labeled_model_favorites():
+    # Every favorite is priced above the model (like an NBA day where the
+    # market likes the chalk more than we do): no value legs anywhere.
+    slate = [_game(1, 0.85, 0.90), _game(2, 0.64, 0.74), _game(3, 0.57, 0.66), _game(4, 0.52, 0.55)]
+    out = parlay.build_parlays(slate, now=NOW)
+    for t in out["tiers"]:
+        if not t["available"]:
+            continue
+        assert t["value"] is False
+        assert "note" in t
+        assert len(t["legs"]) >= parlay.FALLBACK_MIN_LEGS
+        tier = next(x for x in parlay.TIERS if x.key == t["tier"])
+        for leg in t["legs"]:
+            assert leg["model_probability"] > 0.5  # only the model's own picks
+            assert leg["market_probability"] <= tier.max_market_prob
+            assert abs(leg["edge"]) <= parlay.MAX_EDGE
+    assert out["tiers"][0]["available"], "low risk should fall back rather than stay empty"

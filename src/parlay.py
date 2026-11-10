@@ -125,51 +125,78 @@ def _leg_score(leg: dict, tier: Tier) -> float:
     return math.log(leg["model_probability"]) + tier.payout_weight * math.log(leg["decimal_odds"])
 
 
-def build_parlay(legs: list[dict], tier: Tier) -> dict:
-    eligible = [
-        leg for leg in legs
-        if leg["model_probability"] >= tier.min_model_prob
-        and tier.min_edge <= leg["edge"] <= MAX_EDGE
-        and leg["market_probability"] <= tier.max_market_prob
-    ]
-    # Best side per game (both sides can't have a positive edge, but be explicit).
+# A fallback parlay (see build_parlay) needs at least this many legs, even in
+# tiers whose normal minimum is higher -- thin slates (an NBA day is only the
+# games tipping off within 12 hours) rarely have more model favorites to use.
+FALLBACK_MIN_LEGS = 2
+
+
+def _rank(legs: list[dict], tier: Tier) -> list[dict]:
+    """Best-scoring side per game, best first."""
     best_by_game: dict[str, dict] = {}
-    for leg in eligible:
+    for leg in legs:
         key = f'{leg["sport"]}:{leg["game_id"]}'
         if key not in best_by_game or _leg_score(leg, tier) > _leg_score(best_by_game[key], tier):
             best_by_game[key] = leg
-    ranked = sorted(best_by_game.values(), key=lambda leg: _leg_score(leg, tier), reverse=True)
+    return sorted(best_by_game.values(), key=lambda leg: _leg_score(leg, tier), reverse=True)
 
+
+def _select(ranked: list[dict], tier: Tier, min_legs: int) -> list[dict]:
     chosen: list[dict] = []
     hit = 1.0
     for leg in ranked:
         if len(chosen) >= tier.max_legs:
             break
         # Past the minimum, a leg has to improve the tier's objective.
-        if len(chosen) >= tier.min_legs and _leg_score(leg, tier) <= 0:
+        if len(chosen) >= min_legs and _leg_score(leg, tier) <= 0:
             break
         if hit * leg["model_probability"] < tier.min_hit_prob:
             continue  # would sink the parlay below the floor; a likelier leg may still fit
         chosen.append(leg)
         hit *= leg["model_probability"]
+    return chosen
 
-    base = {"tier": tier.key, "label": tier.label, "legs": [], "available": False}
-    if len(chosen) < tier.min_legs:
-        found = {0: "No games currently meet", 1: "Only 1 game currently meets"}.get(
-            len(chosen), f"Only {len(chosen)} games currently meet"
-        )
+
+def build_parlay(legs: list[dict], tier: Tier) -> dict:
+    """The tier's value parlay: every leg clears the tier's bars, including a
+    positive edge over the market. When the slate can't fill one, falls back
+    to the model's own favorites (model above 50%, within the tier's price
+    cap, gap under MAX_EDGE) regardless of edge, marked value=False -- the
+    model expects those to return less than they cost, and the page says so
+    rather than passing them off as value picks."""
+    value_legs = [
+        leg for leg in legs
+        if leg["model_probability"] >= tier.min_model_prob
+        and tier.min_edge <= leg["edge"] <= MAX_EDGE
+        and leg["market_probability"] <= tier.max_market_prob
+    ]
+    chosen = _select(_rank(value_legs, tier), tier, tier.min_legs)
+    value = len(chosen) >= tier.min_legs
+
+    if not value:
+        favorites = [
+            leg for leg in legs
+            if leg["model_probability"] > 0.5
+            and abs(leg["edge"]) <= MAX_EDGE
+            and leg["market_probability"] <= tier.max_market_prob
+        ]
+        chosen = _select(_rank(favorites, tier), tier, FALLBACK_MIN_LEGS)
+
+    base = {"tier": tier.key, "label": tier.label, "legs": [], "available": False, "value": value}
+    if len(chosen) < (tier.min_legs if value else FALLBACK_MIN_LEGS):
         return {
             **base,
             "reason": (
-                f"{found} this tier (model at least {round(tier.min_model_prob * 100)}% and "
-                f"{round(tier.min_edge * 100)}+ points above the market). Check back after the next refresh."
+                "Not enough upcoming games with a market price to build this tier right now. "
+                "Check back after the next refresh."
             ),
         }
 
     chosen.sort(key=lambda leg: leg["game_date"])
+    hit = math.prod(leg["model_probability"] for leg in chosen)
     payout = math.prod(leg["decimal_odds"] for leg in chosen)
     market_hit = math.prod(leg["market_probability"] for leg in chosen)
-    return {
+    out = {
         **base,
         "available": True,
         "legs": chosen,
@@ -180,6 +207,13 @@ def build_parlay(legs: list[dict], tier: Tier) -> dict:
         # Per $1 staked, if the model's probabilities are right.
         "expected_return": hit * payout - 1,
     }
+    if not value:
+        overpriced = sum(leg["edge"] <= 0 for leg in chosen)
+        out["note"] = (
+            "No value parlay for this tier right now, so these are the model's likeliest picks instead. "
+            f"The market prices {overpriced} of {len(chosen)} legs higher than the model rates them."
+        )
+    return out
 
 
 def build_parlays(predictions: list[dict], now: datetime | None = None, horizon_days: int = 7) -> dict:
