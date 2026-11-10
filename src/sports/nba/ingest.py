@@ -203,11 +203,22 @@ def ingest_schedule(start_year: int) -> pd.DataFrame:
     return sched.reset_index(drop=True)
 
 
+def _matchup_home_team(matchup: str) -> str:
+    """The designated home team's abbreviation from a MATCHUP string --
+    "IND vs. DEN" (the home team's own row) or "DEN @ IND" (the away team's).
+    Neutral-site games (international games, the In-Season Tournament
+    final) give *both* teams the "@" form, so "does this row say vs." can't
+    identify home there; the team after "@" is still the designated home."""
+    if " vs. " in matchup:
+        return matchup.split(" vs. ")[0].strip()
+    return matchup.split(" @ ")[-1].strip()
+
+
 def load_games(start_season: int, end_season: int) -> pd.DataFrame:
     """Common schema for elo.py/reconcile.py: one row per completed regular-
     season game. LeagueGameFinder gives two rows per game (one per team);
     paired up here via GAME_ID, with home/away read from the MATCHUP field
-    ("vs." = home, "@" = away). Week, tip time and neutral-site flag come
+    (see _matchup_home_team). Week, tip time and neutral-site flag come
     from the schedule; game_date (Eastern calendar date) is an extra column
     beyond the common schema, used by features.py's "strictly earlier date"
     joins."""
@@ -215,7 +226,7 @@ def load_games(start_season: int, end_season: int) -> pd.DataFrame:
     for year in range(start_season, end_season + 1):
         raw = ingest_season_games(year)
         raw = raw[raw["WL"].notna()].copy()  # completed games only
-        raw["is_home"] = raw["MATCHUP"].str.contains(" vs. ")
+        raw["is_home"] = raw["TEAM_ABBREVIATION"] == raw["MATCHUP"].map(_matchup_home_team)
         home = raw[raw["is_home"]].set_index("GAME_ID")
         away = raw[~raw["is_home"]].set_index("GAME_ID")
         merged = home.join(away, lsuffix="_home", rsuffix="_away", how="inner")
