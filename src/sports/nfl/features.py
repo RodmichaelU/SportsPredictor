@@ -29,6 +29,13 @@ DIFF_BASES = ROLLING_STAT_COLUMNS
 FEATURE_COLUMNS = ["elo_diff"] + [f"{b}_diff" for b in DIFF_BASES] + ["closing_spread"]
 FEATURES_PATH = config.PROCESSED_DIR / "nfl_features.parquet"
 
+# Inputs a live prediction needs before it's frozen. Betting lines post
+# days after a week's schedule does, and the median the model's imputer
+# substitutes for a missing spread is close to a pick'em -- so freezing early
+# throws away the strongest signal the model has. refresh.py holds a game
+# back until these exist (or kickoff is close; see FREEZE_FALLBACK there).
+FREEZE_REQUIRES = ["closing_spread"]
+
 # Human-readable labels for FEATURE_COLUMNS, for the frontend's model-weights
 # view. All "_diff" features are home minus away.
 FEATURE_LABELS = {

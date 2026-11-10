@@ -13,6 +13,8 @@ Run: python -m src.predict --sport cfb --season 2026 --week 2
 import argparse
 from datetime import datetime, timezone
 
+import pandas as pd
+
 from src import models, store
 from src.sports import registry
 
@@ -48,6 +50,11 @@ def generate_predictions(sport: str, season: int, week: int, backfill: bool = Fa
     home_win_prob = logistic.predict_proba(X)[:, 1]
     predicted_margin = ridge.predict(X)
 
+    # Inputs this sport needs before freezing (features.FREEZE_REQUIRES, e.g.
+    # the betting spread) that this game doesn't have yet. Not stored --
+    # refresh.py uses it to decide whether to freeze now or wait.
+    freeze_requires = getattr(features, "FREEZE_REQUIRES", [])
+
     predicted_at = datetime.now(timezone.utc).isoformat()
     rows = []
     for i, (_, game) in enumerate(upcoming.iterrows()):
@@ -66,9 +73,23 @@ def generate_predictions(sport: str, season: int, week: int, backfill: bool = Fa
                 "predicted_winner": winner,
                 "predicted_margin": float(predicted_margin[i]),
                 "model_version": model_version,
+                "missing_inputs": [col for col in freeze_requires if pd.isna(game.get(col))],
             }
         )
     return rows
+
+
+def unfrozen(sport: str, rows: list[dict]) -> list[dict]:
+    """The subset of rows whose game doesn't have a frozen prediction yet."""
+    if not rows:
+        return []
+    conn = store.get_connection()
+    frozen = {
+        r["game_id"]
+        for r in conn.execute("SELECT game_id FROM predictions WHERE sport = ?", (sport,)).fetchall()
+    }
+    conn.close()
+    return [r for r in rows if r["game_id"] not in frozen]
 
 
 def save_predictions(rows: list[dict]) -> int:
