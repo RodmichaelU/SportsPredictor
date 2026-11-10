@@ -42,7 +42,7 @@ export default async function GameExplanationPage(props: PageProps<"/games/[game
     data.market_home_probability === null ? null : homeIsPick ? data.market_home_probability : 1 - data.market_home_probability;
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-14">
       {/* Matchup banner: the two teams squared off across the full width. */}
       <section className="bleed relative -mt-8 overflow-hidden bg-ink-950 text-white">
         <div aria-hidden className="broadcast-bg pointer-events-none absolute inset-0 opacity-70" />
@@ -95,16 +95,15 @@ export default async function GameExplanationPage(props: PageProps<"/games/[game
         </div>
       </section>
 
-      <div className="grid items-start gap-8 lg:grid-cols-[1fr_20rem]">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-14">
         <section>
-          <SectionHeader eyebrow="The breakdown" title={`Why the model picked ${data.predicted_winner}`} />
-          <p className="mb-4 text-sm text-neutral-500">
-            Bar length shows how much each factor moved the prediction. Click a row for the underlying
-            numbers. Some stats are correlated with each other (a team&apos;s overall rating already
-            reflects its offense and defense), so they&apos;re grouped together here -- a factor&apos;s
-            combined effect is more reliable than its parts taken individually.
+          <SectionHeader title={`Why ${data.predicted_winner}?`} />
+          <p className="mb-5 text-sm text-neutral-500">
+            Bar length shows how much each factor moved the prediction; tap a row for the underlying
+            numbers. Related stats are grouped together, since a factor&apos;s combined effect is more
+            reliable than its parts taken individually.
           </p>
-          <Panel className="py-0">
+          <Panel className="py-1">
             {data.groups.map((group) => (
               <ExplanationFactor
                 key={group.key}
@@ -116,61 +115,25 @@ export default async function GameExplanationPage(props: PageProps<"/games/[game
           </Panel>
         </section>
 
-        <aside className="flex flex-col gap-8 lg:sticky lg:top-28">
-          <div>
-            <SectionHeader title="The numbers" size="sm" />
-            <Panel className="grid grid-cols-2 gap-px overflow-hidden bg-neutral-200 p-0 dark:bg-white/10">
-              {[
-                { label: "Pick", value: data.predicted_winner },
-                { label: "Confidence", value: formatPercent(confidence) },
-                { label: "Market", value: marketPick === null ? "—" : formatPercent(marketPick) },
-                {
-                  label: "Edge",
-                  value: marketPick === null ? "—" : `${confidence >= marketPick ? "+" : ""}${Math.round((confidence - marketPick) * 100)}`,
-                },
-              ].map((s) => (
-                <div key={s.label} className="min-w-0 bg-white p-3 dark:bg-ink-900">
-                  <div className="eyebrow text-[10px] text-neutral-400">{s.label}</div>
-                  <div className="display mt-0.5 truncate text-2xl">{s.value}</div>
-                </div>
-              ))}
+        {data.market_home_probability !== null && marketPick !== null && (
+          <section>
+            <SectionHeader
+              title="What the market thinks"
+              eyebrow={`${confidence >= marketPick ? "+" : ""}${Math.round((confidence - marketPick) * 100)} pts vs. our model`}
+            />
+            <Panel className="p-6">
+              <ProbabilityDuel
+                homeTeam={data.home_team}
+                awayTeam={data.away_team}
+                sport={sport}
+                winProbability={data.market_home_probability}
+                caption="Live implied probability from Kalshi's real-money prediction market"
+              />
             </Panel>
-          </div>
+          </section>
+        )}
 
-          {data.market_home_probability !== null && (
-            <div>
-              <SectionHeader title="Live market (Kalshi)" size="sm" />
-              <Panel>
-                <ProbabilityDuel
-                  homeTeam={data.home_team}
-                  awayTeam={data.away_team}
-                  sport={sport}
-                  winProbability={data.market_home_probability}
-                  caption="Live implied probability from Kalshi's real-money prediction market"
-                />
-              </Panel>
-            </div>
-          )}
-
-          <div>
-            <SectionHeader title="Team pages" size="sm" />
-            <Panel className="py-1">
-              {[data.away_team, data.home_team].map((t) => (
-                <Link
-                  key={t}
-                  href={`/teams/${encodeURIComponent(t)}?sport=${sport}`}
-                  className="group flex items-center gap-3 border-b border-neutral-100 py-2.5 last:border-0 dark:border-white/5"
-                >
-                  <TeamBadge team={t} sport={sport} size="md" />
-                  <span className="flex-1 truncate text-sm font-semibold group-hover:text-brand-600 dark:group-hover:text-brand-400">{t}</span>
-                  <span className="text-brand-600 dark:text-brand-400">›</span>
-                </Link>
-              ))}
-            </Panel>
-          </div>
-
-          <p className="text-xs text-neutral-500">Model version {data.model_version}.</p>
-        </aside>
+        <p className="text-center text-xs text-neutral-500">Model version {data.model_version}.</p>
       </div>
     </div>
   );

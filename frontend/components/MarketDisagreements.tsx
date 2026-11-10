@@ -20,8 +20,7 @@ function ProbabilityRow({ label, value, colorClass }: { label: string; value: nu
 // team's odds most differently -- either we know something the market
 // doesn't yet, or vice versa. Both bars are the same quantity (home team win
 // probability) so the gap between them is a direct, honest read, not a
-// reframed "confidence in the pick" number. Laid out as a vertical list for
-// the predictions page sidebar.
+// reframed "confidence in the pick" number.
 export default function MarketDisagreements({ predictions, sport }: { predictions: Prediction[]; sport: string }) {
   const ranked = predictions
     .filter((p): p is Prediction & { market_home_probability: number } => p.market_home_probability !== null)
@@ -32,31 +31,25 @@ export default function MarketDisagreements({ predictions, sport }: { prediction
   if (ranked.length === 0) return null;
 
   return (
-    <div>
-      <SectionHeader title="Model vs. market" size="sm" />
-      <Panel className="py-1">
-        <p className="border-b border-neutral-100 py-2.5 text-[11px] text-neutral-500 dark:border-white/5">
-          Home team win probability from our model and from Kalshi&apos;s live market. A big gap means one
-          side thinks it knows something the other doesn&apos;t.
-        </p>
+    <section>
+      <SectionHeader title="Model vs. market" eyebrow="Biggest disagreements with Kalshi" />
+      <div className="grid gap-4 sm:grid-cols-3">
         {ranked.map(({ prediction: p, gap }) => (
-          <Link
-            key={p.game_id}
-            href={`/games/${p.game_id}?sport=${sport}`}
-            className="group flex flex-col gap-2 border-b border-neutral-100 py-3 last:border-0 dark:border-white/5"
-          >
-            <div className="flex items-center gap-2">
-              <TeamBadge team={p.home_team} sport={sport} size="sm" />
-              <span className="min-w-0 flex-1 truncate text-sm font-semibold group-hover:text-brand-600 dark:group-hover:text-brand-400">
-                {p.home_team} <span className="font-normal text-neutral-500">vs {p.away_team}</span>
-              </span>
-              <span className="eyebrow shrink-0 text-[10px] text-brand-600 dark:text-brand-400">{Math.round(gap * 100)} pt gap</span>
-            </div>
-            <ProbabilityRow label="Model" value={p.win_probability} colorClass="bg-brand-600" />
-            <ProbabilityRow label="Market" value={p.market_home_probability} colorClass="bg-neutral-500" />
+          <Link key={p.game_id} href={`/games/${p.game_id}?sport=${sport}`} className="group">
+            <Panel className="flex h-full flex-col gap-3 p-5 transition-shadow group-hover:shadow-lg">
+              <div className="flex items-center gap-2">
+                <TeamBadge team={p.home_team} sport={sport} size="sm" />
+                <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+                  {p.home_team} <span className="font-normal text-neutral-500">vs {p.away_team}</span>
+                </span>
+                <span className="eyebrow shrink-0 text-[10px] text-brand-600 dark:text-brand-400">{Math.round(gap * 100)} pts</span>
+              </div>
+              <ProbabilityRow label="Model" value={p.win_probability} colorClass="bg-brand-600" />
+              <ProbabilityRow label="Market" value={p.market_home_probability} colorClass="bg-neutral-500" />
+            </Panel>
           </Link>
         ))}
-      </Panel>
-    </div>
+      </div>
+    </section>
   );
 }

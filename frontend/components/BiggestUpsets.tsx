@@ -9,14 +9,14 @@ import TeamBadge from "./TeamBadge";
 // "where we already were", ranked by how confident the model was in the
 // pick that lost. A 51% pick losing is a coin flip going the other way; a
 // 90%+ pick losing is the model getting caught flat-footed. Laid out as a
-// compact list for the results page sidebar.
+// compact list beside the results page's weekly chart.
 export default function BiggestUpsets({ results, sport }: { results: Result[]; sport: string }) {
-  const upsets = rankByUpset(results).slice(0, 5);
+  const upsets = rankByUpset(results).slice(0, 4);
   if (upsets.length === 0) return null;
 
   return (
     <div>
-      <SectionHeader title="Biggest upsets" size="sm" />
+      <SectionHeader title="Biggest upsets" />
       <Panel className="py-1">
         <p className="border-b border-neutral-100 py-2.5 text-[11px] text-neutral-500 dark:border-white/5">
           Completed games the model was most confident about -- and got wrong.

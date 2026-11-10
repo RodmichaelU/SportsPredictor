@@ -59,7 +59,7 @@ export default async function TeamPage(props: PageProps<"/teams/[team]">) {
   const eloDelta = eloStart !== null && data.current_elo !== null ? data.current_elo - eloStart : null;
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-14">
       <section className="bleed relative -mt-8 overflow-hidden bg-ink-950 text-white">
         <div aria-hidden className="broadcast-bg pointer-events-none absolute inset-0 opacity-70" />
         <div className="bleed-inner relative py-8">
@@ -100,82 +100,80 @@ export default async function TeamPage(props: PageProps<"/teams/[team]">) {
         </div>
       </section>
 
-      <div className="grid items-start gap-8 lg:grid-cols-[1fr_20rem]">
-        <div className="flex flex-col gap-10">
-          <Reveal>
-            <SectionHeader title="Elo rating this season" />
-            <Panel>
-              <EloTrendChart history={data.elo_history} currentRating={data.current_elo} />
-            </Panel>
-          </Reveal>
+      {upcoming.length > 0 && (
+        <Reveal as="section">
+          <SectionHeader title="Up next" />
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {upcoming.slice(0, 3).map((g) => (
+              <PredictionCard key={g.game_id} prediction={g} sport={sport} />
+            ))}
+          </div>
+        </Reveal>
+      )}
 
-          {decided.length > 0 && (
-            <Reveal>
-              <SectionHeader eyebrow={`${data.record.wins}-${data.record.losses}`} title="Season so far" />
-              <Panel className="overflow-x-auto p-0">
-                <table className="w-full min-w-[34rem] border-collapse text-sm">
-                  <thead>
-                    <tr className="bg-ink-950 text-left text-white">
-                      {["Date", "Opponent", "Result", "Model pick", ""].map((h, i) => (
-                        <th key={i} className="eyebrow px-4 py-2 text-[11px] font-bold">{h}</th>
-                      ))}
+      <Reveal as="section">
+        <SectionHeader title="Elo rating this season" />
+        <Panel className="p-6">
+          <EloTrendChart history={data.elo_history} currentRating={data.current_elo} />
+        </Panel>
+      </Reveal>
+
+      {decided.length > 0 && (
+        <Reveal>
+          <SectionHeader eyebrow={`${data.record.wins}-${data.record.losses}`} title="Season so far" />
+          <Panel className="overflow-x-auto p-0">
+            <table className="w-full min-w-[34rem] border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-neutral-200 text-left text-neutral-500 dark:border-white/10">
+                  {["Date", "Opponent", "Result", "Model pick", ""].map((h, i) => (
+                    <th key={i} className="eyebrow px-4 py-2 text-[11px] font-bold">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {decided.map((g) => {
+                  const isHome = g.home_team === data.team;
+                  const opponent = isHome ? g.away_team : g.home_team;
+                  const won = g.actual_winner === data.team;
+                  const teamScore = isHome ? g.home_score : g.away_score;
+                  const oppScore = isHome ? g.away_score : g.home_score;
+                  return (
+                    <tr key={g.game_id} className="border-t border-neutral-100 even:bg-neutral-50/60 dark:border-white/5 dark:even:bg-white/[0.02]">
+                      <td className="px-4 py-2.5 whitespace-nowrap text-neutral-500">
+                        {new Date(g.game_date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <Link
+                          href={`/teams/${encodeURIComponent(opponent)}?sport=${sport}`}
+                          className="flex items-center gap-2 hover:text-brand-600 dark:hover:text-brand-400"
+                        >
+                          <span className="w-4 text-xs text-neutral-400">{isHome ? "vs" : "@"}</span>
+                          <TeamBadge team={opponent} sport={sport} size="sm" />
+                          <span className="truncate font-medium">{opponent}</span>
+                        </Link>
+                      </td>
+                      <td className="px-4 py-2.5 whitespace-nowrap tabular-nums">
+                        <span className={`mr-2 font-bold ${won ? "text-emerald-600 dark:text-emerald-400" : "text-brand-600 dark:text-brand-400"}`}>
+                          {won ? "W" : "L"}
+                        </span>
+                        {teamScore}-{oppScore}
+                      </td>
+                      <td className="px-4 py-2.5 whitespace-nowrap text-neutral-600 dark:text-neutral-400">
+                        {g.predicted_winner} ({Math.round(pickConfidence(g) * 100)}%)
+                      </td>
+                      <td className="px-4 py-2.5 text-right">
+                        <Link href={`/games/${g.game_id}?sport=${sport}`} className="inline-flex items-center gap-2">
+                          <HitBadge hit={g.hit} />
+                        </Link>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {decided.map((g) => {
-                      const isHome = g.home_team === data.team;
-                      const opponent = isHome ? g.away_team : g.home_team;
-                      const won = g.actual_winner === data.team;
-                      const teamScore = isHome ? g.home_score : g.away_score;
-                      const oppScore = isHome ? g.away_score : g.home_score;
-                      return (
-                        <tr key={g.game_id} className="border-t border-neutral-100 even:bg-neutral-50/60 dark:border-white/5 dark:even:bg-white/[0.02]">
-                          <td className="px-4 py-2.5 whitespace-nowrap text-neutral-500">
-                            {new Date(g.game_date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                          </td>
-                          <td className="px-4 py-2.5">
-                            <Link
-                              href={`/teams/${encodeURIComponent(opponent)}?sport=${sport}`}
-                              className="flex items-center gap-2 hover:text-brand-600 dark:hover:text-brand-400"
-                            >
-                              <span className="w-4 text-xs text-neutral-400">{isHome ? "vs" : "@"}</span>
-                              <TeamBadge team={opponent} sport={sport} size="sm" />
-                              <span className="truncate font-medium">{opponent}</span>
-                            </Link>
-                          </td>
-                          <td className="px-4 py-2.5 whitespace-nowrap tabular-nums">
-                            <span className={`mr-2 font-bold ${won ? "text-emerald-600 dark:text-emerald-400" : "text-brand-600 dark:text-brand-400"}`}>
-                              {won ? "W" : "L"}
-                            </span>
-                            {teamScore}-{oppScore}
-                          </td>
-                          <td className="px-4 py-2.5 whitespace-nowrap text-neutral-600 dark:text-neutral-400">
-                            {g.predicted_winner} ({Math.round(pickConfidence(g) * 100)}%)
-                          </td>
-                          <td className="px-4 py-2.5 text-right">
-                            <Link href={`/games/${g.game_id}?sport=${sport}`} className="inline-flex items-center gap-2">
-                              <HitBadge hit={g.hit} />
-                            </Link>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </Panel>
-            </Reveal>
-          )}
-        </div>
-
-        <aside className="flex flex-col gap-4 lg:sticky lg:top-28">
-          <SectionHeader title="Up next" size="sm" />
-          {upcoming.length === 0 ? (
-            <Panel className="text-sm text-neutral-500">No upcoming games with a prediction yet.</Panel>
-          ) : (
-            upcoming.slice(0, 3).map((g) => <PredictionCard key={g.game_id} prediction={g} sport={sport} />)
-          )}
-        </aside>
-      </div>
+                  );
+                })}
+              </tbody>
+            </table>
+          </Panel>
+        </Reveal>
+      )}
     </div>
   );
 }
