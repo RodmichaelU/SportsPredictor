@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f1f2f4;
+  --foreground: #121417;
 }
 
 @theme inline {
@@ -10,11 +10,33 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-display-condensed);
+}
+
+/* The app's accent: a broadcast-style crimson. Components use brand-* rather
+   than a named Tailwind hue so the accent can change here in one place. */
+@theme {
+  --color-brand-50: #fff1f2;
+  --color-brand-100: #ffe0e2;
+  --color-brand-200: #ffc5ca;
+  --color-brand-300: #ff9aa2;
+  --color-brand-400: #ff5f6d;
+  --color-brand-500: #f7303f;
+  --color-brand-600: #d90f20;
+  --color-brand-700: #b60a19;
+  --color-brand-800: #960d1a;
+  --color-brand-900: #7c111c;
+  --color-brand-950: #44040a;
+
+  /* Near-black chrome for the header, hero, and scoreboard strips. */
+  --color-ink-800: #1c1f26;
+  --color-ink-900: #13151a;
+  --color-ink-950: #0b0c10;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
+    --background: #0b0c10;
     --foreground: #ededed;
   }
 }
@@ -23,6 +45,44 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Headline type: condensed, heavy, uppercase -- the sports-broadcast look. */
+.display {
+  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  line-height: 0.95;
+}
+
+/* Small uppercase section labels ("TOP PICKS", "THIS WEEK"). */
+.eyebrow {
+  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+/* Full-bleed bands inside the centered <main>: break out to the viewport
+   edges, then re-center content on the same 69rem column main uses (72rem
+   max-w-6xl minus its px-6 gutters), so band content lines up with the page. */
+@utility bleed {
+  margin-inline: calc(50% - 50vw);
+  padding-inline: 1.5rem;
+}
+@utility bleed-inner {
+  max-width: 69rem;
+  margin-inline: auto;
+}
+
+/* Diagonal light streaks + a red glow: the broadcast-graphics backdrop
+   behind dark bands. Apply to an absolutely positioned layer. */
+.broadcast-bg {
+  background:
+    radial-gradient(ellipse 60% 90% at 85% 0%, rgba(217, 15, 32, 0.32), transparent 60%),
+    repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.025) 0 2px, transparent 2px 28px);
 }
 
 /* Horizontal-scroll strips (GameTicker) still scroll via touch/trackpad/

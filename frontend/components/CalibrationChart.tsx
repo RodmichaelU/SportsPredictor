@@ -85,7 +85,7 @@ export default function CalibrationChart({ bins }: { bins: CalibrationBin[] }) {
       <polyline
         points={bins.map((b) => `${s(b.predicted_mean)},${s(1 - b.actual_rate)}`).join(" ")}
         fill="none"
-        className="stroke-sky-600"
+        className="stroke-brand-600 dark:stroke-brand-500"
         strokeWidth={2}
       />
       {bins.map((b) => (
@@ -94,7 +94,7 @@ export default function CalibrationChart({ bins }: { bins: CalibrationBin[] }) {
           cx={s(b.predicted_mean)}
           cy={s(1 - b.actual_rate)}
           r={radius(b.count)}
-          className="fill-sky-600/70 stroke-white dark:stroke-neutral-900"
+          className="fill-brand-600/70 stroke-white dark:stroke-neutral-900"
           strokeWidth={1.5}
         />
       ))}

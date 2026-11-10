@@ -8,7 +8,7 @@ export default function CardGridSkeleton({ count = 6 }: { count?: number }) {
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className="flex animate-pulse flex-col gap-3 rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"
+          className="flex animate-pulse flex-col gap-3 rounded-md border border-neutral-200 bg-white p-4 dark:border-white/10 dark:bg-ink-900"
         >
           <div className="h-3 w-20 rounded bg-neutral-200 dark:bg-neutral-800" />
           <div className="flex items-center gap-2">

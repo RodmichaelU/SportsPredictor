@@ -11,7 +11,7 @@ export default function Loading() {
         {Array.from({ length: 5 }).map((_, i) => (
           <div
             key={i}
-            className={`h-20 animate-pulse rounded-xl bg-neutral-200 dark:bg-neutral-800 ${i === 0 ? "col-span-2 sm:col-span-2" : ""}`}
+            className={`h-20 animate-pulse rounded-md bg-neutral-200 dark:bg-neutral-800 ${i === 0 ? "col-span-2 sm:col-span-2" : ""}`}
           />
         ))}
       </div>

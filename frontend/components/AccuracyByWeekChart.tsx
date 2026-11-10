@@ -50,7 +50,7 @@ export default function AccuracyByWeekChart({ weeks }: { weeks: WeeklyAccuracy[]
         const barH = PAD.top + PLOT_H - barTop;
         return (
           <g key={`${w.season}-${w.week}`}>
-            <rect x={centerX - barWidth / 2} y={barTop} width={barWidth} height={barH} rx={4} className="fill-indigo-600" />
+            <rect x={centerX - barWidth / 2} y={barTop} width={barWidth} height={barH} rx={4} className="fill-brand-600" />
             <text x={centerX} y={barTop - 8} textAnchor="middle" className="fill-neutral-600 text-[11px] font-semibold dark:fill-neutral-300">
               {Math.round(w.accuracy * 100)}%
             </text>

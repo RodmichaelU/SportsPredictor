@@ -27,7 +27,7 @@ export default function WeekFilter({ weeks }: { weeks: number[] }) {
     <select
       value={selected}
       onChange={onChange}
-      className="rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm font-medium text-neutral-700 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200"
+      className="eyebrow rounded-sm border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-800 dark:border-white/10 dark:bg-ink-900 dark:text-neutral-200"
     >
       <option value="">All weeks</option>
       {weeks.map((w) => (

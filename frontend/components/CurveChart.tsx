@@ -124,7 +124,7 @@ export default function CurveChart({
       ))}
 
       {/* fitted model curve */}
-      <path d={linePath} fill="none" className="stroke-sky-600" strokeWidth={2.5} />
+      <path d={linePath} fill="none" className="stroke-brand-600 dark:stroke-brand-500" strokeWidth={2.5} />
     </svg>
   );
 }

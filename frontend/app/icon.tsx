@@ -12,8 +12,8 @@ export default function Icon() {
       <svg width={32} height={32} viewBox="0 0 48 48">
         <defs>
           <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#6366f1" />
-            <stop offset="100%" stopColor="#7c3aed" />
+            <stop offset="0%" stopColor="#f7303f" />
+            <stop offset="100%" stopColor="#b60a19" />
           </linearGradient>
         </defs>
         <path

@@ -39,10 +39,10 @@ export default function EloTrendChart({ history, currentRating }: { history: Elo
         </g>
       ))}
 
-      <path d={path} fill="none" className="stroke-indigo-600" strokeWidth={2.5} />
+      <path d={path} fill="none" className="stroke-brand-600" strokeWidth={2.5} />
       {points.map((p, i) => (
         <g key={i}>
-          <circle cx={sx(i)} cy={sy(p.rating)} r={i === points.length - 1 ? 4.5 : 3} className="fill-indigo-600 stroke-white dark:stroke-neutral-900" strokeWidth={1.5} />
+          <circle cx={sx(i)} cy={sy(p.rating)} r={i === points.length - 1 ? 4.5 : 3} className="fill-brand-600 stroke-white dark:stroke-neutral-900" strokeWidth={1.5} />
           <text x={sx(i)} y={HEIGHT - PAD.bottom + 14} textAnchor="middle" className="fill-neutral-400 text-[9px]">
             {i === 0 ? "Start" : `vs ${p.opponent}`.slice(0, 10)}
           </text>
