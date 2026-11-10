@@ -109,7 +109,11 @@ export default async function ParlaysPage(props: PageProps<"/parlays">) {
                 what it pays, using the model&apos;s numbers and the market&apos;s prices, and flags any leg the
                 market is charging too much for.
               </p>
-              <ParlayBuilder candidates={parlays.candidates} logos={logos} />
+              <ParlayBuilder
+                candidates={parlays.candidates}
+                logos={logos}
+                leagueNames={Object.fromEntries(liveSports.map((s) => [s.id, s.id.toUpperCase()]))}
+              />
             </section>
           )}
 

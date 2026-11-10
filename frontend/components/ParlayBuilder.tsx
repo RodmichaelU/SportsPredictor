@@ -55,12 +55,15 @@ function Logo({ src, team }: { src?: string; team: string }) {
 export default function ParlayBuilder({
   candidates,
   logos,
+  leagueNames = {},
 }: {
   candidates: ParlayLeg[];
   logos: Record<string, Record<string, string>>; // sport -> team -> logo URL
+  leagueNames?: Record<string, string>; // sport id -> display name for the filter chips
 }) {
   const [picks, setPicks] = useState<Record<string, boolean>>({}); // gameKey -> is_home
   const [query, setQuery] = useState("");
+  const [league, setLeague] = useState<string | null>(null); // null = all leagues
   const [rating, setRating] = useState<ParlayRating | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -78,11 +81,22 @@ export default function ParlayBuilder({
     return [...byKey.values()].filter((g) => g.home && g.away);
   }, [candidates]);
 
+  // Leagues present in this pool, in first-seen order, with game counts.
+  const leagues = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const g of games) counts.set(g.sport, (counts.get(g.sport) ?? 0) + 1);
+    return [...counts.entries()].map(([id, count]) => ({ id, count }));
+  }, [games]);
+
+  // Filters only narrow the list; picks already in the slip stay there.
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return games;
-    return games.filter((g) => g.home.team.toLowerCase().includes(q) || g.away.team.toLowerCase().includes(q));
-  }, [games, query]);
+    return games.filter(
+      (g) =>
+        (!league || g.sport === league) &&
+        (!q || g.home.team.toLowerCase().includes(q) || g.away.team.toLowerCase().includes(q))
+    );
+  }, [games, query, league]);
 
   const slip = useMemo(
     () =>
@@ -138,13 +152,38 @@ export default function ParlayBuilder({
     <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[1fr_22rem]">
       {/* Game list */}
       <div>
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search teams"
-          className="mb-4 w-full rounded-md border border-neutral-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-brand-500 dark:border-white/10 dark:bg-ink-900"
-        />
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search teams"
+            className="w-full rounded-md border border-neutral-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-brand-500 sm:flex-1 dark:border-white/10 dark:bg-ink-900"
+          />
+          {leagues.length > 1 && (
+            <div className="no-scrollbar scroll-fade flex gap-2 overflow-x-auto" role="group" aria-label="Filter by league">
+              {[{ id: null as string | null, count: games.length }, ...leagues].map((l) => {
+                const active = league === l.id;
+                return (
+                  <button
+                    key={l.id ?? "all"}
+                    type="button"
+                    onClick={() => setLeague(l.id)}
+                    aria-pressed={active}
+                    className={`eyebrow shrink-0 rounded-full px-3.5 py-2 text-[11px] whitespace-nowrap transition-colors ${
+                      active
+                        ? "bg-brand-600 text-white"
+                        : "bg-white text-neutral-600 ring-1 ring-neutral-200 hover:text-brand-600 dark:bg-ink-900 dark:text-neutral-300 dark:ring-white/10"
+                    }`}
+                  >
+                    {l.id ? leagueNames[l.id] ?? l.id.toUpperCase() : "All"}
+                    <span className={`ml-1.5 tabular-nums ${active ? "text-white/70" : "text-neutral-400"}`}>{l.count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
         {visible.length === 0 ? (
           <p className="text-sm text-neutral-500">No upcoming priced games match.</p>
         ) : (
