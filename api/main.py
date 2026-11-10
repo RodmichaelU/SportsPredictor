@@ -17,7 +17,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 import config
-from src import elo, models, predict, store
+from src import elo, market_history, models, parlay, predict, store
 from src.evaluate import expected_calibration_error
 from src.models import classification_metrics
 from src.odds import kalshi
@@ -59,6 +59,10 @@ def _prediction_dict(row, market: dict | None = None) -> dict:
         "predicted_margin": row["predicted_margin"],
         "model_version": row["model_version"],
         "market_home_probability": market["home_probability"] if market else None,
+        # "live" (fetched from Kalshi this request) or "snapshot" (the latest
+        # price saved by refresh.py, used when Kalshi can't be reached live).
+        "market_source": market.get("source") if market else None,
+        "market_captured_at": market.get("captured_at") if market else None,
     }
 
 
@@ -93,18 +97,50 @@ def get_predictions(sport: str = "cfb", week: int | None = Query(default=None)):
     rows = conn.execute(query, params).fetchall()
     conn.close()
 
-    # Fetch Kalshi's open markets once per request and match every row
-    # against that same index, rather than one HTTP round-trip per game.
-    # Best-effort: a Kalshi outage shouldn't take the whole endpoint down.
+    markets = _market_prices(sport, rows)
+    return [_prediction_dict(r, markets.get(str(r["game_id"]))) for r in rows]
+
+
+def _market_prices(sport: str, rows) -> dict[str, dict]:
+    """game_id -> market price for each prediction row: Kalshi live when it
+    matches, otherwise the latest pre-game snapshot refresh.py saved.
+
+    Fetches Kalshi's open markets once and matches every row against that
+    same index, rather than one HTTP round-trip per game. Best-effort: a
+    Kalshi outage falls back to snapshots instead of taking the endpoint down.
+    """
     try:
         market_index = kalshi.build_index(sport)
     except Exception:
         market_index = {}
+    snapshots = market_history.latest_prices(sport)
 
-    return [
-        _prediction_dict(r, kalshi.match_game(sport, r["home_team"], r["away_team"], market_index))
-        for r in rows
-    ]
+    prices = {}
+    for r in rows:
+        game_id = str(r["game_id"])
+        live = kalshi.match_game(sport, r["home_team"], r["away_team"], market_index)
+        if live:
+            prices[game_id] = {**live, "source": "live", "captured_at": None}
+        elif game_id in snapshots:
+            prices[game_id] = {**snapshots[game_id], "source": "snapshot"}
+    return prices
+
+
+@app.get("/parlays")
+def get_parlays(sports: str | None = None, horizon_days: int = Query(default=7, ge=1, le=14)):
+    """Parlays at three risk tiers (see src/parlay.py), built from every
+    upcoming prediction with a market price. `sports` is a comma-separated
+    filter (e.g. "cfb,nfl"); default is every live sport, so legs can mix
+    leagues."""
+    live = [s["id"] for s in SPORTS if s["status"] == "live"]
+    wanted = [s for s in (sports.split(",") if sports else live) if s in live]
+    if not wanted:
+        raise HTTPException(status_code=400, detail=f"sports must be from: {', '.join(live)}")
+
+    predictions = []
+    for sport in wanted:
+        predictions.extend(get_predictions(sport, week=None))
+    return {"sports": wanted, **parlay.build_parlays(predictions, horizon_days=horizon_days)}
 
 
 @app.get("/results")
@@ -405,10 +441,7 @@ def get_explain(sport: str = "cfb", game_id: str = Query(...)):
         )
     groups.sort(key=lambda g: -abs(g["contribution"]))
 
-    try:
-        market = kalshi.match_game(sport, home_team, away_team, kalshi.build_index(sport))
-    except Exception:
-        market = None
+    market = _market_prices(sport, [row]).get(str(game_id))
 
     return {
         "sport": sport,
@@ -420,6 +453,10 @@ def get_explain(sport: str = "cfb", game_id: str = Query(...)):
         "model_version": row["model_version"],
         "groups": groups,
         "market_home_probability": market["home_probability"] if market else None,
+        # "live" (fetched from Kalshi this request) or "snapshot" (the latest
+        # price saved by refresh.py, used when Kalshi can't be reached live).
+        "market_source": market.get("source") if market else None,
+        "market_captured_at": market.get("captured_at") if market else None,
     }
 
 
@@ -521,15 +558,11 @@ def get_team(sport: str = "cfb", team: str = Query(...)):
     if not rows and not ((all_games["home_team"] == team) | (all_games["away_team"] == team)).any():
         raise HTTPException(status_code=404, detail="No games on record for this team")
 
-    try:
-        market_index = kalshi.build_index(sport)
-    except Exception:
-        market_index = {}
+    markets = _market_prices(sport, [r for r in rows if r["hit"] is None])
 
     games = []
     for r in rows:
-        market = kalshi.match_game(sport, r["home_team"], r["away_team"], market_index) if r["hit"] is None else None
-        game = _prediction_dict(r, market)
+        game = _prediction_dict(r, markets.get(str(r["game_id"])))
         game.update(
             {
                 "home_score": r["home_score"],

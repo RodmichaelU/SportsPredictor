@@ -50,7 +50,8 @@ python3 -m src.evaluate --sport nfl                             # calibration + 
 python3 -m src.predict --sport nfl --season 2026 --week 2      # freeze predictions for a week (never regenerated)
                                                                 # (nba weeks are the NBA's Monday-Sunday weeks; prefer refresh.py for nba, see above)
 python3 -m src.reconcile --sport nfl                            # score frozen predictions against final results
-uvicorn api.main:app --port 8000                                # serve /sports /predictions /results /accuracy (all sports)
+uvicorn api.main:app --port 8000                                # serve /sports /predictions /results /accuracy /parlays (all sports)
+python3 -m src.parlay                                           # print this week's low/medium/high-risk parlays from the running API
 
 python3 -m src.sports.nhl.ingest --start 2024 --end 2024        # nhl: same, via api-web.nhle.com
 python3 -m src.elo --sport nhl                                  # nhl: real Elo baseline, no features.py yet
