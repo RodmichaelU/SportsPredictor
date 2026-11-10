@@ -19,22 +19,22 @@ export default function ExplanationFactor({
   const textColor = favorsHome ? "text-sky-700 dark:text-sky-400" : "text-amber-700 dark:text-amber-400";
 
   return (
-    <div className="border-b border-neutral-100 py-3 last:border-0 dark:border-neutral-900">
+    <div className="border-b border-neutral-100 py-3 last:border-0 dark:border-white/5">
       <button
         onClick={() => setOpen(!open)}
         className="flex w-full items-center gap-3 text-left"
       >
-        <div className="w-48 shrink-0 text-sm text-neutral-700 dark:text-neutral-300">{group.label}</div>
-        <div className="h-2 flex-1 overflow-hidden rounded-full bg-neutral-100 dark:bg-neutral-900">
+        <div className="w-28 shrink-0 text-sm text-neutral-700 sm:w-48 dark:text-neutral-300">{group.label}</div>
+        <div className="h-2 flex-1 overflow-hidden rounded-full bg-neutral-100 dark:bg-white/10">
           <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
         </div>
-        <div className={`w-40 shrink-0 text-right text-sm font-medium ${textColor}`}>
+        <div className={`w-24 shrink-0 truncate text-right text-xs font-semibold sm:w-40 sm:text-sm ${textColor}`}>
           Favors {group.favored_team}
         </div>
         <span className="w-4 shrink-0 text-center text-xs text-neutral-400">{open ? "−" : "+"}</span>
       </button>
       {open && (
-        <ul className="mt-2 ml-[13.5rem] flex flex-col gap-1 text-xs text-neutral-500">
+        <ul className="mt-2 flex sm:ml-[13.5rem] flex-col gap-1 text-xs text-neutral-500">
           {group.details.map((detail, i) => (
             <li key={i}>{detail}</li>
           ))}
