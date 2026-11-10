@@ -223,6 +223,103 @@ def build_parlays(predictions: list[dict], now: datetime | None = None, horizon_
         "generated_at": now.isoformat(),
         "priced_games": len({(leg["sport"], leg["game_id"]) for leg in legs}),
         "tiers": [build_parlay(legs, tier) for tier in TIERS],
+        # Every pickable side, for the build-your-own rater (rate_parlay).
+        "candidates": sorted(legs, key=lambda leg: (leg["game_date"], leg["sport"], leg["game_id"], leg["is_home"])),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Build-your-own rating
+#
+# Grades any set of legs a user picks. The headline is the parlay's expected
+# return by the model's numbers -- the one figure that captures both "how
+# likely" and "how much it pays" -- turned into a 0-100 score and an A-F
+# grade, with per-leg flags explaining what's helping or hurting it.
+
+MIN_RATED_LEGS = 2
+MAX_RATED_LEGS = 12
+
+# Per-leg verdicts, by model-minus-market edge.
+FAIR_BAND = 0.01  # within a point either way: the model and market agree
+
+# How quickly the score saturates toward A or F: an expected return of
+# about +35% (or -26%, its log mirror) lands three quarters of the way there.
+SCORE_SCALE = 0.35
+OVERPRICED_PENALTY = 6  # points off per leg the market overrates
+SUSPECT_PENALTY = 4  # points off per leg whose model number looks unreliable
+
+GRADES = [(80, "A"), (65, "B"), (50, "C"), (35, "D"), (0, "F")]
+
+
+def leg_verdict(leg: dict) -> str:
+    if abs(leg["edge"]) > MAX_EDGE:
+        return "suspect"  # gap too big to trust; see MAX_EDGE
+    if leg["edge"] >= FAIR_BAND:
+        return "value"
+    if leg["edge"] <= -FAIR_BAND:
+        return "overpriced"
+    return "fair"
+
+
+def rate_parlay(legs: list[dict]) -> dict:
+    """Score a user-built parlay. `legs` are candidate_legs() entries (one
+    side per game). Suspect legs count at the market's price rather than the
+    model's, so a likely data problem can't inflate the grade."""
+    keys = [(leg["sport"], leg["game_id"]) for leg in legs]
+    if len(keys) != len(set(keys)):
+        raise ValueError("A parlay can't include both sides, or the same game twice.")
+    if not MIN_RATED_LEGS <= len(legs) <= MAX_RATED_LEGS:
+        raise ValueError(f"Pick between {MIN_RATED_LEGS} and {MAX_RATED_LEGS} legs.")
+
+    rated = []
+    for leg in legs:
+        verdict = leg_verdict(leg)
+        trusted_p = leg["market_probability"] if verdict == "suspect" else leg["model_probability"]
+        rated.append({**leg, "verdict": verdict, "trusted_probability": trusted_p})
+
+    hit = math.prod(leg["trusted_probability"] for leg in rated)
+    payout = math.prod(leg["decimal_odds"] for leg in rated)
+    market_hit = math.prod(leg["market_probability"] for leg in rated)
+    expected_return = hit * payout - 1
+    counts = {v: sum(leg["verdict"] == v for leg in rated) for v in ("value", "fair", "overpriced", "suspect")}
+
+    score = 50 + 45 * math.tanh(math.log(1 + expected_return) / SCORE_SCALE)
+    score -= OVERPRICED_PENALTY * counts["overpriced"] + SUSPECT_PENALTY * counts["suspect"]
+    score = max(0, min(100, round(score)))
+    grade = next(g for floor, g in GRADES if score >= floor)
+
+    # The leg dragging the parlay down most: the worst trusted edge.
+    weakest = min(rated, key=lambda leg: leg["trusted_probability"] - leg["market_probability"])
+
+    if expected_return >= 0.15 and not counts["overpriced"]:
+        summary = "Strong parlay: every leg is priced at or below what the model thinks it's worth."
+    elif expected_return >= 0:
+        summary = "Decent parlay: the model expects it to pay back a little more than it costs."
+    elif counts["overpriced"]:
+        summary = (
+            f"The market prices {counts['overpriced']} of your {len(rated)} legs higher than the model does, "
+            "so the model expects this to lose money."
+        )
+    else:
+        summary = "The model expects this to pay back less than it costs."
+
+    return {
+        "score": score,
+        "grade": grade,
+        "summary": summary,
+        "legs": rated,
+        "hit_probability": hit,
+        "market_hit_probability": market_hit,
+        "decimal_odds": payout,
+        "american_odds": american_odds(payout),
+        "expected_return": expected_return,
+        "counts": counts,
+        "weakest_leg": None if weakest["trusted_probability"] >= weakest["market_probability"] else {
+            "team": weakest["team"],
+            "verdict": weakest["verdict"],
+            "model_probability": weakest["model_probability"],
+            "market_probability": weakest["market_probability"],
+        },
     }
 
 
