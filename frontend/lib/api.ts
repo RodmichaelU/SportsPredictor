@@ -1,5 +1,5 @@
 import { MOCK_ACCURACY, MOCK_ACCURACY_BY_WEEK, MOCK_CALIBRATION, MOCK_EXPLANATION, mockModelCurve, MOCK_MODEL_WEIGHTS, MOCK_PREDICTIONS, MOCK_RESULTS, MOCK_SPORTS, MOCK_STANDINGS, mockTeamDetail, MOCK_TEAMS } from "./mockData";
-import { AccuracyByWeek, AccuracySummary, Calibration, CurveTarget, Explanation, ModelCurve, ModelWeights, Parlays, Prediction, Result, Sport, Standings, TeamDetail } from "./types";
+import { AccuracyByWeek, AccuracySummary, Calibration, CurveTarget, Explanation, ModelCurve, ModelWeights, ParlayRating, Parlays, Prediction, Result, Sport, Standings, TeamDetail } from "./types";
 
 // With NEXT_PUBLIC_API_URL unset, falls back to mock data (useful for UI
 // work without the backend running). Set it to point at api/main.py
@@ -112,6 +112,22 @@ export async function getParlays(sports?: string[]): Promise<Parlays | null> {
   if (!API_BASE_URL) return null;
   const query = sports && sports.length ? `?sports=${sports.join(",")}` : "";
   return fetchJson<Parlays>(`/parlays${query}`);
+}
+
+// Grades a user-built parlay. Called from the browser as legs are picked, so
+// errors (a game that just started, say) come back as a message to show
+// rather than a thrown exception that would break the page.
+export async function getParlayRating(
+  legs: { sport: string; game_id: string; is_home: boolean }[],
+  signal?: AbortSignal
+): Promise<{ rating: ParlayRating } | { error: string }> {
+  const query = legs.map((l) => `${l.sport}:${l.game_id}:${l.is_home ? "home" : "away"}`).join(",");
+  const res = await fetch(`${API_BASE_URL}/parlay-rating?legs=${encodeURIComponent(query)}`, { cache: "no-store", signal });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    return { error: body?.detail ?? `Couldn't rate this parlay (${res.status}).` };
+  }
+  return { rating: await res.json() };
 }
 
 export const isLiveApi = Boolean(API_BASE_URL);
