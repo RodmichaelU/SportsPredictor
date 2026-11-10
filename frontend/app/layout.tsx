@@ -38,8 +38,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} ${displayFont.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col overflow-x-clip bg-background text-neutral-900 dark:text-neutral-100">
-        <header className="sticky top-0 z-20 bg-ink-950 text-white shadow-[0_2px_0_0_var(--color-brand-600)]">
-          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-6">
+        <header className="z-20 bg-ink-950 md:sticky md:top-0 text-white shadow-[0_2px_0_0_var(--color-brand-600)]">
+          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-6 px-4 sm:px-6">
             <Link href="/" className="flex items-center gap-2.5 py-3">
               <Logo className="h-8 w-8" />
               <span className="display text-2xl leading-none">
@@ -54,8 +54,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             <SecondaryNav />
           </Suspense>
         </header>
-        <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">{children}</main>
-        <footer className="bg-ink-950 px-6 py-8 text-neutral-400">
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">{children}</main>
+        <footer className="bg-ink-950 px-4 py-8 text-neutral-400 sm:px-6">
           <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4">
             <Link href="/" className="flex items-center gap-2">
               <Logo className="h-6 w-6" />

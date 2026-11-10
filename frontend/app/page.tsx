@@ -56,14 +56,14 @@ export default async function HomePage() {
   const hasStrip = stripGroups.some((g) => g.predictions.length > 0);
 
   return (
-    <div className="flex flex-col gap-20">
+    <div className="flex flex-col gap-14 sm:gap-20">
       <div>
         <ScoreStrip groups={stripGroups} />
 
         {/* Hero: one message, one featured game. */}
-        <section className={`bleed relative overflow-hidden bg-ink-950 py-16 text-white ${hasStrip ? "" : "-mt-8"}`}>
+        <section className={`bleed relative overflow-hidden bg-ink-950 py-10 text-white sm:py-16 ${hasStrip ? "" : "-mt-8"}`}>
           <div aria-hidden className="broadcast-bg pointer-events-none absolute inset-0" />
-          <div className="bleed-inner relative grid items-center gap-12 lg:grid-cols-[1.1fr_1fr]">
+          <div className="bleed-inner relative grid grid-cols-1 items-center gap-10 lg:grid-cols-[1.1fr_1fr] lg:gap-12">
             <div className="flex flex-col gap-6">
               <h1 className="display text-6xl sm:text-7xl">
                 Every pick.
@@ -112,15 +112,16 @@ export default async function HomePage() {
 
       {/* Track record, at a glance. */}
       {liveStats.length > 0 && (
-        <Reveal as="section" className="grid gap-6 text-center sm:grid-cols-3">
+        <Reveal as="section" className="grid grid-cols-3 gap-2 text-center sm:gap-6">
           {liveStats.map((a) => (
             <Link key={a.sport} href={`/results?sport=${a.sport}`} className="group">
-              <div className="display text-7xl tabular-nums">
+              <div className="display text-5xl tabular-nums sm:text-7xl">
                 {Math.round((a.accuracy ?? 0) * 100)}
                 <span className="text-brand-600 dark:text-brand-500">%</span>
               </div>
-              <div className="mt-1 text-sm text-neutral-500 group-hover:text-brand-600 dark:group-hover:text-brand-400">
-                {sportName(a.sport)} accuracy · {a.sample_size} games ›
+              <div className="mt-1 text-xs text-neutral-500 group-hover:text-brand-600 sm:text-sm dark:group-hover:text-brand-400">
+                <span className="sm:hidden">{a.sport.toUpperCase()}</span>
+                <span className="hidden sm:inline">{sportName(a.sport)} accuracy</span> · {a.sample_size} games ›
               </div>
             </Link>
           ))}
@@ -131,7 +132,7 @@ export default async function HomePage() {
         <Reveal as="section">
           <SectionHeader title="Top picks this week" href={`/predictions?sport=${primarySport}`} linkLabel="All predictions" />
           <Panel className="py-1">
-            <div className="grid gap-x-10 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-x-10 md:grid-cols-2">
               {topPicks.map(({ p, sport }) => (
                 <PickRow key={`${sport}-${p.game_id}`} prediction={p} sport={sport} tag={sport.toUpperCase()} />
               ))}
@@ -142,7 +143,7 @@ export default async function HomePage() {
 
       <Reveal as="section">
         <SectionHeader title="How it works" href="/model" linkLabel="Full methodology" />
-        <ol className="grid gap-10 sm:grid-cols-3">
+        <ol className="grid grid-cols-1 gap-10 sm:grid-cols-3">
           {STEPS.map((step, i) => (
             <li key={step.title} className="flex flex-col gap-2">
               <span className="display text-5xl text-brand-600 dark:text-brand-500">{String(i + 1).padStart(2, "0")}</span>

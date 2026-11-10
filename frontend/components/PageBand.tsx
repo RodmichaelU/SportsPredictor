@@ -18,7 +18,7 @@ export default function PageBand({
   return (
     <section className="bleed relative -mt-8 overflow-hidden bg-ink-950 text-white">
       <div aria-hidden className="broadcast-bg pointer-events-none absolute inset-0 opacity-70" />
-      <div className="bleed-inner relative flex flex-wrap items-center justify-between gap-x-10 gap-y-8 py-12">
+      <div className="bleed-inner relative flex flex-wrap items-center justify-between gap-x-10 gap-y-8 py-8 sm:py-12">
         <div className="max-w-xl">
           {eyebrow && <div className="eyebrow mb-2 text-brand-400">{eyebrow}</div>}
           <h1 className="display text-5xl sm:text-6xl">{title}</h1>

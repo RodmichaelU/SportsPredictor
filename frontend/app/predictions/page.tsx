@@ -36,7 +36,7 @@ export default async function PredictionsPage(props: PageProps<"/predictions">) 
   }
 
   return (
-    <div className="flex flex-col gap-16">
+    <div className="flex flex-col gap-12 sm:gap-16">
       <PageBand
         eyebrow={sportInfo?.name ?? sport.toUpperCase()}
         title="This week's picks"

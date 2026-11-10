@@ -54,77 +54,79 @@ export default function CurveChart({
   const yTicks = target === "win" ? [0, 0.25, 0.5, 0.75, 1] : niceTicks(yMin, yMax, 5);
 
   return (
-    <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="w-full" role="img" aria-label={`${xLabel} vs ${target === "win" ? "win probability" : "predicted margin"}`}>
-      {/* gridlines + y ticks */}
-      {yTicks.map((t) => (
-        <g key={t}>
+    <div className="no-scrollbar scroll-fade overflow-x-auto">
+      <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="w-full min-w-[34rem]" role="img" aria-label={`${xLabel} vs ${target === "win" ? "win probability" : "predicted margin"}`}>
+        {/* gridlines + y ticks */}
+        {yTicks.map((t) => (
+          <g key={t}>
+            <line
+              x1={PAD.left}
+              x2={WIDTH - PAD.right}
+              y1={sy(t)}
+              y2={sy(t)}
+              className="stroke-neutral-200 dark:stroke-neutral-800"
+              strokeWidth={1}
+            />
+            <text
+              x={PAD.left - 8}
+              y={sy(t)}
+              textAnchor="end"
+              dominantBaseline="middle"
+              className="fill-neutral-400 text-[10px]"
+            >
+              {target === "win" ? `${Math.round(t * 100)}%` : t.toFixed(0)}
+            </text>
+          </g>
+        ))}
+
+        {/* x ticks */}
+        {xTicks.map((t) => (
+          <text
+            key={t}
+            x={sx(t)}
+            y={HEIGHT - PAD.bottom + 16}
+            textAnchor="middle"
+            className="fill-neutral-400 text-[10px]"
+          >
+            {t.toFixed(0)}
+          </text>
+        ))}
+        <text
+          x={PAD.left + PLOT_W / 2}
+          y={HEIGHT - 6}
+          textAnchor="middle"
+          className="fill-neutral-500 text-[11px] font-medium"
+        >
+          {xLabel}
+        </text>
+
+        {/* zero line for margin */}
+        {target === "margin" && yMin < 0 && yMax > 0 && (
           <line
             x1={PAD.left}
             x2={WIDTH - PAD.right}
-            y1={sy(t)}
-            y2={sy(t)}
-            className="stroke-neutral-200 dark:stroke-neutral-800"
+            y1={sy(0)}
+            y2={sy(0)}
+            className="stroke-neutral-300 dark:stroke-neutral-700"
             strokeWidth={1}
+            strokeDasharray="4 3"
           />
-          <text
-            x={PAD.left - 8}
-            y={sy(t)}
-            textAnchor="end"
-            dominantBaseline="middle"
-            className="fill-neutral-400 text-[10px]"
-          >
-            {target === "win" ? `${Math.round(t * 100)}%` : t.toFixed(0)}
-          </text>
-        </g>
-      ))}
+        )}
 
-      {/* x ticks */}
-      {xTicks.map((t) => (
-        <text
-          key={t}
-          x={sx(t)}
-          y={HEIGHT - PAD.bottom + 16}
-          textAnchor="middle"
-          className="fill-neutral-400 text-[10px]"
-        >
-          {t.toFixed(0)}
-        </text>
-      ))}
-      <text
-        x={PAD.left + PLOT_W / 2}
-        y={HEIGHT - 6}
-        textAnchor="middle"
-        className="fill-neutral-500 text-[11px] font-medium"
-      >
-        {xLabel}
-      </text>
+        {/* real historical games */}
+        {scatter.map((p, i) => (
+          <circle
+            key={i}
+            cx={sx(p.x)}
+            cy={sy(Math.min(Math.max(p.y, yMin), yMax))}
+            r={2.5}
+            className="fill-neutral-400/50 dark:fill-neutral-500/50"
+          />
+        ))}
 
-      {/* zero line for margin */}
-      {target === "margin" && yMin < 0 && yMax > 0 && (
-        <line
-          x1={PAD.left}
-          x2={WIDTH - PAD.right}
-          y1={sy(0)}
-          y2={sy(0)}
-          className="stroke-neutral-300 dark:stroke-neutral-700"
-          strokeWidth={1}
-          strokeDasharray="4 3"
-        />
-      )}
-
-      {/* real historical games */}
-      {scatter.map((p, i) => (
-        <circle
-          key={i}
-          cx={sx(p.x)}
-          cy={sy(Math.min(Math.max(p.y, yMin), yMax))}
-          r={2.5}
-          className="fill-neutral-400/50 dark:fill-neutral-500/50"
-        />
-      ))}
-
-      {/* fitted model curve */}
-      <path d={linePath} fill="none" className="stroke-brand-600 dark:stroke-brand-500" strokeWidth={2.5} />
-    </svg>
+        {/* fitted model curve */}
+        <path d={linePath} fill="none" className="stroke-brand-600 dark:stroke-brand-500" strokeWidth={2.5} />
+      </svg>
+    </div>
   );
 }

@@ -44,7 +44,7 @@ export default function FeaturedMatchup({
       className={`group relative flex flex-col overflow-hidden rounded-md bg-ink-900 text-white ring-1 ring-white/10 transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-2xl hover:ring-brand-500/60 ${className}`}
     >
       <div aria-hidden className="broadcast-bg pointer-events-none absolute inset-0 opacity-50" />
-      <div className="relative flex items-center justify-between bg-brand-600 px-4 py-1.5">
+      <div className="relative flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 bg-brand-600 px-4 py-1.5">
         <span className="eyebrow text-[11px] text-white">{label}</span>
         <span className="text-[11px] font-semibold tracking-wide text-white/80 uppercase">
           {sportLabel && <>{sportLabel} · </>}

@@ -24,7 +24,7 @@ export default function SecondaryNav() {
 
   return (
     <div className="bg-ink-800">
-      <div className="no-scrollbar mx-auto flex w-full max-w-6xl gap-6 overflow-x-auto px-6">
+      <div className="no-scrollbar scroll-fade mx-auto flex w-full max-w-6xl gap-6 overflow-x-auto px-4 sm:px-6">
         {TABS.map((tab) => {
           const active = pathname === tab.href;
           return (

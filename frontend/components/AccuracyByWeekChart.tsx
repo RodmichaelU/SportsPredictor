@@ -27,42 +27,44 @@ export default function AccuracyByWeekChart({ weeks }: { weeks: WeeklyAccuracy[]
   const sy = (v: number) => PAD.top + (1 - v) * PLOT_H;
 
   return (
-    <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="w-full" role="img" aria-label="Accuracy by week">
-      {Y_TICKS.map((t) => (
-        <g key={t}>
-          <line
-            x1={PAD.left}
-            x2={WIDTH - PAD.right}
-            y1={sy(t)}
-            y2={sy(t)}
-            className="stroke-neutral-200 dark:stroke-neutral-800"
-            strokeWidth={1}
-          />
-          <text x={PAD.left - 8} y={sy(t)} textAnchor="end" dominantBaseline="middle" className="fill-neutral-400 text-[10px]">
-            {Math.round(t * 100)}%
-          </text>
-        </g>
-      ))}
-
-      {weeks.map((w, i) => {
-        const centerX = PAD.left + slot * (i + 0.5);
-        const barTop = sy(w.accuracy);
-        const barH = PAD.top + PLOT_H - barTop;
-        return (
-          <g key={`${w.season}-${w.week}`}>
-            <rect x={centerX - barWidth / 2} y={barTop} width={barWidth} height={barH} rx={4} className="fill-brand-600" />
-            <text x={centerX} y={barTop - 8} textAnchor="middle" className="fill-neutral-600 text-[11px] font-semibold dark:fill-neutral-300">
-              {Math.round(w.accuracy * 100)}%
-            </text>
-            <text x={centerX} y={HEIGHT - PAD.bottom + 16} textAnchor="middle" className="fill-neutral-500 text-[11px] font-medium">
-              Wk {w.week}
-            </text>
-            <text x={centerX} y={HEIGHT - PAD.bottom + 30} textAnchor="middle" className="fill-neutral-400 text-[10px]">
-              n={w.sample_size}
+    <div className="no-scrollbar scroll-fade overflow-x-auto">
+      <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="w-full min-w-[34rem]" role="img" aria-label="Accuracy by week">
+        {Y_TICKS.map((t) => (
+          <g key={t}>
+            <line
+              x1={PAD.left}
+              x2={WIDTH - PAD.right}
+              y1={sy(t)}
+              y2={sy(t)}
+              className="stroke-neutral-200 dark:stroke-neutral-800"
+              strokeWidth={1}
+            />
+            <text x={PAD.left - 8} y={sy(t)} textAnchor="end" dominantBaseline="middle" className="fill-neutral-400 text-[10px]">
+              {Math.round(t * 100)}%
             </text>
           </g>
-        );
-      })}
-    </svg>
+        ))}
+
+        {weeks.map((w, i) => {
+          const centerX = PAD.left + slot * (i + 0.5);
+          const barTop = sy(w.accuracy);
+          const barH = PAD.top + PLOT_H - barTop;
+          return (
+            <g key={`${w.season}-${w.week}`}>
+              <rect x={centerX - barWidth / 2} y={barTop} width={barWidth} height={barH} rx={4} className="fill-brand-600" />
+              <text x={centerX} y={barTop - 8} textAnchor="middle" className="fill-neutral-600 text-[11px] font-semibold dark:fill-neutral-300">
+                {Math.round(w.accuracy * 100)}%
+              </text>
+              <text x={centerX} y={HEIGHT - PAD.bottom + 16} textAnchor="middle" className="fill-neutral-500 text-[11px] font-medium">
+                Wk {w.week}
+              </text>
+              <text x={centerX} y={HEIGHT - PAD.bottom + 30} textAnchor="middle" className="fill-neutral-400 text-[10px]">
+                n={w.sample_size}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
   );
 }

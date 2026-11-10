@@ -7,7 +7,7 @@ import { Sport } from "@/lib/types";
 // League tabs sit on the dark header: condensed uppercase labels with a
 // full-height red underline on the active league, like a broadcast nav bar.
 function linkClass(active: boolean) {
-  return `-mb-px flex h-14 shrink-0 items-center whitespace-nowrap border-b-[3px] font-[family-name:var(--font-display)] text-[15px] font-bold tracking-wider uppercase transition-colors ${
+  return `-mb-px flex h-12 shrink-0 sm:h-14 items-center whitespace-nowrap border-b-[3px] font-[family-name:var(--font-display)] text-[15px] font-bold tracking-wider uppercase transition-colors ${
     active
       ? "border-brand-500 text-white"
       : "border-transparent text-neutral-400 hover:text-white"
@@ -21,7 +21,7 @@ export default function LeagueNav({ sports }: { sports: Sport[] }) {
   const onHome = pathname === "/";
 
   return (
-    <nav className="no-scrollbar flex items-center gap-6 overflow-x-auto">
+    <nav className="no-scrollbar scroll-fade -mx-4 flex w-[calc(100%+2rem)] items-center gap-6 overflow-x-auto px-4 sm:mx-0 sm:w-auto sm:px-0">
       <Link href="/" className={linkClass(onHome)}>
         Home
       </Link>

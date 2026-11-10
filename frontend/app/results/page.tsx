@@ -46,7 +46,7 @@ export default async function ResultsPage(props: PageProps<"/results">) {
   }
 
   return (
-    <div className="flex flex-col gap-16">
+    <div className="flex flex-col gap-12 sm:gap-16">
       <PageBand
         eyebrow={sportInfo?.name ?? sport.toUpperCase()}
         title="Results"
@@ -61,7 +61,7 @@ export default async function ResultsPage(props: PageProps<"/results">) {
           </>
         }
         aside={
-          <div className="text-right">
+          <div className="sm:text-right">
             <div className="display text-8xl tabular-nums sm:text-9xl">
               {accuracy.accuracy === null ? "—" : Math.round(accuracy.accuracy * 100)}
               <span className="text-brand-500">%</span>
@@ -74,11 +74,11 @@ export default async function ResultsPage(props: PageProps<"/results">) {
       />
 
       {(accuracyByWeek.weeks.length >= 2 || results.some((r) => !r.hit)) && (
-        <Reveal className="grid items-start gap-8 lg:grid-cols-[1.6fr_1fr]">
+        <Reveal className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[1.6fr_1fr]">
           {accuracyByWeek.weeks.length >= 2 && (
             <section>
               <SectionHeader title="Week by week" />
-              <Panel className="p-6">
+              <Panel className="p-4 sm:p-6">
                 <AccuracyByWeekChart weeks={accuracyByWeek.weeks} />
               </Panel>
             </section>
@@ -89,7 +89,7 @@ export default async function ResultsPage(props: PageProps<"/results">) {
 
       <section className="flex flex-col gap-12">
         <div className="flex items-center justify-between gap-4 border-t border-neutral-200 pt-10 dark:border-white/10">
-          <h2 className="display text-4xl">Every graded pick</h2>
+          <h2 className="display text-3xl sm:text-4xl">Every graded pick</h2>
           <WeekFilter weeks={weeks} />
         </div>
 

@@ -115,7 +115,7 @@ export default async function ModelPage(props: PageProps<"/model">) {
   const maxAbsWeight = Math.max(...data.weights.map((w) => Math.abs(w.weight)), 0);
 
   return (
-    <div className="flex flex-col gap-20">
+    <div className="flex flex-col gap-14 sm:gap-20">
       <PageBand
         eyebrow={sportInfo?.name ?? sport.toUpperCase()}
         title="How the model works"
@@ -160,7 +160,7 @@ export default async function ModelPage(props: PageProps<"/model">) {
           win probability as the gap grows; <span className="font-semibold text-amber-600">amber</span> lowers
           it. All &quot;gap&quot; features are home team minus away team.
         </p>
-        <Panel className="flex flex-col gap-3 p-6">
+        <Panel className="flex flex-col gap-3 p-4 sm:p-6">
           {data.weights.map((w) => (
             <WeightBar key={w.feature} weight={w} maxAbsWeight={maxAbsWeight} />
           ))}
@@ -189,13 +189,13 @@ export default async function ModelPage(props: PageProps<"/model">) {
               </div>
             ))}
           </div>
-          <div className="grid gap-6 lg:grid-cols-2">
-            <Panel className="p-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <Panel className="p-4 sm:p-6">
               <h3 className="display mb-4 text-xl">Record by confidence</h3>
               <RecordByConfidence results={results} />
             </Panel>
             {calibration.sample_size >= 10 && (
-              <Panel className="p-6">
+              <Panel className="p-4 sm:p-6">
                 <h3 className="display mb-1 text-xl">Calibration</h3>
                 <p className="mb-3 text-xs text-neutral-500">
                   Games grouped by predicted home win probability vs. how often the home team actually won.

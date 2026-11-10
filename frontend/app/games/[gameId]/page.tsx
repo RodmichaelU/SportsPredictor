@@ -69,9 +69,9 @@ export default async function GameExplanationPage(props: PageProps<"/games/[game
                   href={`/teams/${encodeURIComponent(t.team)}?sport=${sport}`}
                   className={`group flex min-w-0 flex-col gap-3 ${t.align}`}
                 >
-                  <div className={`flex items-center gap-4 ${i === 2 ? "flex-row-reverse" : ""}`}>
+                  <div className={`flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4 ${i === 2 ? "items-end sm:flex-row-reverse" : "items-start"}`}>
                     <TeamBadge team={t.team} sport={sport} size="xl" />
-                    <span className={`display text-6xl tabular-nums sm:text-8xl ${t.isPick ? "" : "text-neutral-600"}`}>
+                    <span className={`display text-5xl tabular-nums sm:text-8xl ${t.isPick ? "" : "text-neutral-600"}`}>
                       {Math.round(t.pct * 100)}
                       <span className={`text-3xl sm:text-5xl ${t.isPick ? "text-brand-500" : ""}`}>%</span>
                     </span>
@@ -81,7 +81,7 @@ export default async function GameExplanationPage(props: PageProps<"/games/[game
                       {t.side}
                       {t.isPick && <span className="ml-2 rounded-sm bg-brand-600 px-1.5 py-px text-white">Pick</span>}
                     </div>
-                    <div className="display truncate text-2xl group-hover:text-brand-400 sm:text-4xl">{t.team}</div>
+                    <div className="display truncate text-xl group-hover:text-brand-400 sm:text-4xl">{t.team}</div>
                   </div>
                 </Link>
               )
@@ -121,7 +121,7 @@ export default async function GameExplanationPage(props: PageProps<"/games/[game
               title="What the market thinks"
               eyebrow={`${confidence >= marketPick ? "+" : ""}${Math.round((confidence - marketPick) * 100)} pts vs. our model`}
             />
-            <Panel className="p-6">
+            <Panel className="p-4 sm:p-6">
               <ProbabilityDuel
                 homeTeam={data.home_team}
                 awayTeam={data.away_team}

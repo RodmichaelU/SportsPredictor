@@ -29,25 +29,27 @@ export default function EloTrendChart({ history, currentRating }: { history: Elo
   const yTicks = [yMin, (yMin + yMax) / 2, yMax];
 
   return (
-    <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="w-full" role="img" aria-label="Elo rating trend this season">
-      {yTicks.map((t) => (
-        <g key={t}>
-          <line x1={PAD.left} x2={WIDTH - PAD.right} y1={sy(t)} y2={sy(t)} className="stroke-neutral-200 dark:stroke-neutral-800" strokeWidth={1} />
-          <text x={PAD.left - 8} y={sy(t)} textAnchor="end" dominantBaseline="middle" className="fill-neutral-400 text-[10px]">
-            {Math.round(t)}
-          </text>
-        </g>
-      ))}
+    <div className="no-scrollbar scroll-fade overflow-x-auto">
+      <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="w-full min-w-[34rem]" role="img" aria-label="Elo rating trend this season">
+        {yTicks.map((t) => (
+          <g key={t}>
+            <line x1={PAD.left} x2={WIDTH - PAD.right} y1={sy(t)} y2={sy(t)} className="stroke-neutral-200 dark:stroke-neutral-800" strokeWidth={1} />
+            <text x={PAD.left - 8} y={sy(t)} textAnchor="end" dominantBaseline="middle" className="fill-neutral-400 text-[10px]">
+              {Math.round(t)}
+            </text>
+          </g>
+        ))}
 
-      <path d={path} fill="none" className="stroke-brand-600" strokeWidth={2.5} />
-      {points.map((p, i) => (
-        <g key={i}>
-          <circle cx={sx(i)} cy={sy(p.rating)} r={i === points.length - 1 ? 4.5 : 3} className="fill-brand-600 stroke-white dark:stroke-neutral-900" strokeWidth={1.5} />
-          <text x={sx(i)} y={HEIGHT - PAD.bottom + 14} textAnchor="middle" className="fill-neutral-400 text-[9px]">
-            {i === 0 ? "Start" : `vs ${p.opponent}`.slice(0, 10)}
-          </text>
-        </g>
-      ))}
-    </svg>
+        <path d={path} fill="none" className="stroke-brand-600" strokeWidth={2.5} />
+        {points.map((p, i) => (
+          <g key={i}>
+            <circle cx={sx(i)} cy={sy(p.rating)} r={i === points.length - 1 ? 4.5 : 3} className="fill-brand-600 stroke-white dark:stroke-neutral-900" strokeWidth={1.5} />
+            <text x={sx(i)} y={HEIGHT - PAD.bottom + 14} textAnchor="middle" className="fill-neutral-400 text-[9px]">
+              {i === 0 ? "Start" : `vs ${p.opponent}`.slice(0, 10)}
+            </text>
+          </g>
+        ))}
+      </svg>
+    </div>
   );
 }

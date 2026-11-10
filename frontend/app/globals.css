@@ -67,10 +67,14 @@ body {
 
 /* Full-bleed bands inside the centered <main>: break out to the viewport
    edges, then re-center content on the same 69rem column main uses (72rem
-   max-w-6xl minus its px-6 gutters), so band content lines up with the page. */
+   max-w-6xl minus its px-6 gutters), so band content lines up with the page.
+   Gutters match main's: 1rem on phones, 1.5rem from the sm breakpoint. */
 @utility bleed {
   margin-inline: calc(50% - 50vw);
-  padding-inline: 1.5rem;
+  padding-inline: 1rem;
+  @media (width >= 40rem) {
+    padding-inline: 1.5rem;
+  }
 }
 @utility bleed-inner {
   max-width: 69rem;
@@ -101,6 +105,14 @@ body {
   .ticker { overflow-x: auto; }
   .ticker-track { animation: none; }
   .ticker-dup { display: none; }
+}
+
+/* Fade the trailing edge of a horizontally scrollable row on phones, so a
+   cut-off tab reads as "swipe for more" rather than as a layout bug. */
+@media (width < 48rem) {
+  .scroll-fade {
+    mask-image: linear-gradient(to right, black calc(100% - 2.5rem), transparent);
+  }
 }
 
 /* Horizontal-scroll strips (GameTicker) still scroll via touch/trackpad/

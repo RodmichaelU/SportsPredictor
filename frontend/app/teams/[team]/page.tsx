@@ -113,7 +113,7 @@ export default async function TeamPage(props: PageProps<"/teams/[team]">) {
 
       <Reveal as="section">
         <SectionHeader title="Elo rating this season" />
-        <Panel className="p-6">
+        <Panel className="p-4 sm:p-6">
           <EloTrendChart history={data.elo_history} currentRating={data.current_elo} />
         </Panel>
       </Reveal>
@@ -122,11 +122,13 @@ export default async function TeamPage(props: PageProps<"/teams/[team]">) {
         <Reveal>
           <SectionHeader eyebrow={`${data.record.wins}-${data.record.losses}`} title="Season so far" />
           <Panel className="overflow-x-auto p-0">
-            <table className="w-full min-w-[34rem] border-collapse text-sm">
+            <table className="w-full border-collapse text-sm">
               <thead>
                 <tr className="border-b border-neutral-200 text-left text-neutral-500 dark:border-white/10">
                   {["Date", "Opponent", "Result", "Model pick", ""].map((h, i) => (
-                    <th key={i} className="eyebrow px-4 py-2 text-[11px] font-bold">{h}</th>
+                    <th key={i} className={`eyebrow px-3 py-2 text-[11px] font-bold sm:px-4 ${h === "Model pick" ? "hidden sm:table-cell" : ""}`}>
+                      {h}
+                    </th>
                   ))}
                 </tr>
               </thead>
@@ -139,29 +141,29 @@ export default async function TeamPage(props: PageProps<"/teams/[team]">) {
                   const oppScore = isHome ? g.away_score : g.home_score;
                   return (
                     <tr key={g.game_id} className="border-t border-neutral-100 even:bg-neutral-50/60 dark:border-white/5 dark:even:bg-white/[0.02]">
-                      <td className="px-4 py-2.5 whitespace-nowrap text-neutral-500">
+                      <td className="px-3 py-2.5 sm:px-4 whitespace-nowrap text-neutral-500">
                         {new Date(g.game_date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                       </td>
-                      <td className="px-4 py-2.5">
+                      <td className="px-3 py-2.5 sm:px-4">
                         <Link
                           href={`/teams/${encodeURIComponent(opponent)}?sport=${sport}`}
                           className="flex items-center gap-2 hover:text-brand-600 dark:hover:text-brand-400"
                         >
                           <span className="w-4 text-xs text-neutral-400">{isHome ? "vs" : "@"}</span>
                           <TeamBadge team={opponent} sport={sport} size="sm" />
-                          <span className="truncate font-medium">{opponent}</span>
+                          <span className="max-w-[7rem] truncate font-medium sm:max-w-none">{opponent}</span>
                         </Link>
                       </td>
-                      <td className="px-4 py-2.5 whitespace-nowrap tabular-nums">
+                      <td className="px-3 py-2.5 sm:px-4 whitespace-nowrap tabular-nums">
                         <span className={`mr-2 font-bold ${won ? "text-emerald-600 dark:text-emerald-400" : "text-brand-600 dark:text-brand-400"}`}>
                           {won ? "W" : "L"}
                         </span>
                         {teamScore}-{oppScore}
                       </td>
-                      <td className="px-4 py-2.5 whitespace-nowrap text-neutral-600 dark:text-neutral-400">
+                      <td className="hidden px-4 py-2.5 whitespace-nowrap text-neutral-600 sm:table-cell dark:text-neutral-400">
                         {g.predicted_winner} ({Math.round(pickConfidence(g) * 100)}%)
                       </td>
-                      <td className="px-4 py-2.5 text-right">
+                      <td className="px-3 py-2.5 sm:px-4 text-right">
                         <Link href={`/games/${g.game_id}?sport=${sport}`} className="inline-flex items-center gap-2">
                           <HitBadge hit={g.hit} />
                         </Link>

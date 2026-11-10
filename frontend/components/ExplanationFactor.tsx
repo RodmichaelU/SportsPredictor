@@ -22,13 +22,13 @@ export default function ExplanationFactor({
     <div className="border-b border-neutral-100 py-3 last:border-0 dark:border-white/5">
       <button
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-3 text-left"
+        className="flex w-full flex-wrap items-center gap-x-3 gap-y-2 text-left sm:flex-nowrap"
       >
-        <div className="w-28 shrink-0 text-sm text-neutral-700 sm:w-48 dark:text-neutral-300">{group.label}</div>
-        <div className="h-2 flex-1 overflow-hidden rounded-full bg-neutral-100 dark:bg-white/10">
+        <div className="min-w-0 flex-1 text-sm text-neutral-700 sm:w-48 sm:flex-none sm:shrink-0 dark:text-neutral-300">{group.label}</div>
+        <div className="order-last h-2 w-full overflow-hidden rounded-full bg-neutral-100 sm:order-none sm:w-auto sm:flex-1 dark:bg-white/10">
           <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
         </div>
-        <div className={`w-24 shrink-0 truncate text-right text-xs font-semibold sm:w-40 sm:text-sm ${textColor}`}>
+        <div className={`shrink-0 truncate text-right text-xs font-semibold sm:w-40 sm:text-sm ${textColor}`}>
           Favors {group.favored_team}
         </div>
         <span className="w-4 shrink-0 text-center text-xs text-neutral-400">{open ? "−" : "+"}</span>

@@ -33,7 +33,7 @@ export default function MarketDisagreements({ predictions, sport }: { prediction
   return (
     <section>
       <SectionHeader title="Model vs. market" eyebrow="Biggest disagreements with Kalshi" />
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {ranked.map(({ prediction: p, gap }) => (
           <Link key={p.game_id} href={`/games/${p.game_id}?sport=${sport}`} className="group">
             <Panel className="flex h-full flex-col gap-3 p-5 transition-shadow group-hover:shadow-lg">
