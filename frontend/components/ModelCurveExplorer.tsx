@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getModelCurve } from "@/lib/api";
+import { fetchModelCurve } from "@/lib/clientData";
 import { CurveTarget, FeatureWeight, ModelCurve } from "@/lib/types";
 import CurveChart from "./CurveChart";
 
@@ -24,7 +24,7 @@ export default function ModelCurveExplorer({
   useEffect(() => {
     if (!feature) return;
     let cancelled = false;
-    getModelCurve(sport, feature, target).then((result) => {
+    fetchModelCurve(sport, feature, target).then((result) => {
       if (!cancelled) setData(result);
     });
     return () => {

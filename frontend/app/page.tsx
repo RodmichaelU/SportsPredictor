@@ -8,6 +8,7 @@ import PickRow from "@/components/PickRow";
 import Reveal from "@/components/Reveal";
 import ScoreStrip from "@/components/ScoreStrip";
 import SectionHeader, { Panel } from "@/components/SectionHeader";
+import { predictionsPath, resultsPath } from "@/lib/routes";
 
 // The three-step version of the methodology; the full walkthrough (with
 // the fitted curves and weights) lives on the Model page.
@@ -80,7 +81,7 @@ export default async function HomePage() {
                 {sports.map((sport) => (
                   <Link
                     key={sport.id}
-                    href={`/predictions?sport=${sport.id}`}
+                    href={predictionsPath(sport.id)}
                     className={`eyebrow rounded-full px-4 py-2 text-xs transition duration-150 active:scale-[0.97] ${
                       sport.id === primarySport
                         ? "bg-brand-600 text-white hover:bg-brand-500"
@@ -116,7 +117,7 @@ export default async function HomePage() {
       {liveStats.length > 0 && (
         <Reveal as="section" className="grid grid-cols-3 gap-2 text-center sm:gap-6">
           {liveStats.map((a) => (
-            <Link key={a.sport} href={`/results?sport=${a.sport}`} className="group">
+            <Link key={a.sport} href={resultsPath(a.sport)} className="group">
               <div className="display text-5xl tabular-nums sm:text-7xl">
                 {Math.round((a.accuracy ?? 0) * 100)}
                 <span className="text-brand-600 dark:text-brand-500">%</span>
@@ -132,7 +133,7 @@ export default async function HomePage() {
 
       {topPicks.length > 0 && (
         <Reveal as="section">
-          <SectionHeader title="Top picks this week" href={`/predictions?sport=${primarySport}`} linkLabel="All predictions" />
+          <SectionHeader title="Top picks this week" href={predictionsPath(primarySport)} linkLabel="All predictions" />
           <Panel className="py-1">
             <div className="grid grid-cols-1 gap-x-10 md:grid-cols-2">
               {topPicks.map(({ p, sport }) => (

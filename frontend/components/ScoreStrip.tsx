@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Prediction } from "@/lib/types";
 import { pickConfidence } from "@/lib/format";
 import TeamBadge from "./TeamBadge";
+import { gamePath, predictionsPath } from "@/lib/routes";
 
 export interface ScoreStripGroup {
   sport: string;
@@ -26,7 +27,7 @@ function Tiles({ groups, duplicate = false }: { groups: ScoreStripGroup[]; dupli
       {groups.map((group) => (
         <div key={group.sport} className="flex shrink-0">
           <Link
-            href={`/predictions?sport=${group.sport}`}
+            href={predictionsPath(group.sport)}
             {...a11y}
             className="eyebrow flex w-14 shrink-0 items-center justify-center text-[11px] text-brand-400 hover:text-white"
           >
@@ -37,7 +38,7 @@ function Tiles({ groups, duplicate = false }: { groups: ScoreStripGroup[]; dupli
             return (
               <Link
                 key={p.game_id}
-                href={`/games/${p.game_id}?sport=${group.sport}`}
+                href={gamePath(group.sport, p.game_id)}
                 {...a11y}
                 className="flex w-44 shrink-0 flex-col gap-1 border-l border-white/5 px-3 py-2 transition-colors hover:bg-white/5"
               >

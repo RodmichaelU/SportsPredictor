@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Prediction } from "@/lib/types";
 import { formatGameDate, formatPercent, marketConfidence, pickConfidence } from "@/lib/format";
 import TeamBadge from "./TeamBadge";
+import { gamePath } from "@/lib/routes";
 
 // Scoreboard-style row: where a score would go, each team shows its own
 // model win probability, with the picked side in full ink and a red marker.
@@ -42,7 +43,7 @@ export default function PredictionCard({ prediction, sport }: { prediction: Pred
 
   return (
     <Link
-      href={`/games/${p.game_id}?sport=${sport}`}
+      href={gamePath(sport, p.game_id)}
       className="group flex flex-col gap-4 rounded-lg bg-white p-5 shadow-sm ring-1 ring-neutral-200/70 transition-[box-shadow,transform] duration-150 ease-out hover:-translate-y-0.5 hover:shadow-lg dark:bg-ink-900 dark:ring-white/10"
     >
       <div className="flex items-center justify-between">

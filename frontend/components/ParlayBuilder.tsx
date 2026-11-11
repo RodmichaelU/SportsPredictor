@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { getParlayRating } from "@/lib/api";
+import { americanOdds, rateParlay } from "@/lib/parlayRating";
 import { LegVerdict, ParlayLeg, ParlayRating } from "@/lib/types";
-import { EarlyTag } from "./ParlayTierCard";
+import EarlyTag from "./EarlyTag";
+import UpdatedAt from "./UpdatedAt";
 
 const STAKE = 10;
 const MAX_LEGS = 12; // matches src/parlay.py MAX_RATED_LEGS
@@ -29,12 +30,6 @@ function gameKey(leg: { sport: string; game_id: string }) {
   return `${leg.sport}:${leg.game_id}`;
 }
 
-// Mirrors src/parlay.py american_odds, so the slip's odds update instantly
-// on every tap without waiting for the rating request.
-function americanFromDecimal(decimal: number): number {
-  return decimal >= 2 ? Math.round((decimal - 1) * 100) : -Math.round(100 / (decimal - 1));
-}
-
 function formatAmerican(odds: number): string {
   return odds > 0 ? `+${odds.toLocaleString()}` : odds.toLocaleString();
 }
@@ -57,16 +52,26 @@ export default function ParlayBuilder({
   candidates,
   logos,
   leagueNames = {},
+  refreshedAt,
 }: {
   candidates: ParlayLeg[];
+  refreshedAt?: string; // when these prices were captured (export time)
   logos: Record<string, Record<string, string>>; // sport -> team -> logo URL
   leagueNames?: Record<string, string>; // sport id -> display name for the filter chips
 }) {
   const [picks, setPicks] = useState<Record<string, boolean>>({}); // gameKey -> is_home
   const [query, setQuery] = useState("");
   const [league, setLeague] = useState<string | null>(null); // null = all leagues
-  const [rating, setRating] = useState<ParlayRating | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  // The page is rebuilt every few hours, so games can kick off in between;
+  // hide those once we know the visitor's clock (after mount, to keep the
+  // pre-rendered HTML and first client render identical).
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => {
+    const tick = () => setNow(Date.now());
+    tick();
+    const id = setInterval(tick, 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   const games = useMemo(() => {
     const byKey = new Map<string, Game>();
@@ -79,8 +84,8 @@ export default function ParlayBuilder({
     }
     // A side outside the market's sane price range is dropped upstream, so
     // only list games where both sides can be picked.
-    return [...byKey.values()].filter((g) => g.home && g.away);
-  }, [candidates]);
+    return [...byKey.values()].filter((g) => g.home && g.away && (now === null || new Date(g.game_date).getTime() > now));
+  }, [candidates, now]);
 
   // Leagues present in this pool, in first-seen order, with game counts.
   const leagues = useMemo(() => {
@@ -107,31 +112,6 @@ export default function ParlayBuilder({
     [games, picks]
   );
 
-  useEffect(() => {
-    if (slip.length < 2) return;
-    const controller = new AbortController();
-    // Short debounce: rapid taps while building a slip send one request.
-    const timer = setTimeout(async () => {
-      setError(null);
-      try {
-        const result = await getParlayRating(slip, controller.signal);
-        if ("error" in result) {
-          setError(result.error);
-          setRating(null);
-        } else {
-          setError(null);
-          setRating(result.rating);
-        }
-      } catch (e) {
-        if ((e as Error).name !== "AbortError") setError("Couldn't reach the rating service.");
-      }
-    }, 250);
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [slip]);
-
   function toggle(game: Game, isHome: boolean) {
     setPicks((prev) => {
       const next = { ...prev };
@@ -141,12 +121,16 @@ export default function ParlayBuilder({
     });
   }
 
-  // Only trust a rating that matches the current slip (it may lag a tap).
-  const ratingIsCurrent =
-    rating !== null &&
-    rating.legs.length === slip.length &&
-    rating.legs.every((l) => picks[gameKey(l)] === l.is_home);
-  const shown = slip.length >= 2 && ratingIsCurrent ? rating : null;
+  // Graded in the browser (lib/parlayRating.js, a tested port of
+  // src/parlay.py), so it updates instantly on every tap.
+  const { shown, error } = useMemo((): { shown: ParlayRating | null; error: string | null } => {
+    if (slip.length < 2) return { shown: null, error: null };
+    try {
+      return { shown: rateParlay(slip), error: null };
+    } catch (e) {
+      return { shown: null, error: (e as Error).message };
+    }
+  }, [slip]);
   const payout = slip.reduce((acc, leg) => acc * leg.decimal_odds, 1);
 
   return (
@@ -245,6 +229,11 @@ export default function ParlayBuilder({
               </button>
             )}
           </div>
+          {refreshedAt && (
+            <div className="border-b border-neutral-100 bg-neutral-50 px-5 py-2 text-neutral-500 dark:border-white/5 dark:bg-white/5">
+              <UpdatedAt iso={refreshedAt} />
+            </div>
+          )}
 
           {slip.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-neutral-500">
@@ -298,16 +287,14 @@ export default function ParlayBuilder({
                       ${(STAKE * payout).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </span>
-                  <span className="display text-2xl tabular-nums">{slip.length >= 2 ? formatAmerican(americanFromDecimal(payout)) : "—"}</span>
+                  <span className="display text-2xl tabular-nums">{slip.length >= 2 ? formatAmerican(americanOdds(payout)) : "—"}</span>
                 </div>
 
                 {slip.length < 2 ? (
                   <p className="mt-3 text-sm text-neutral-500">Add one more game to get a rating.</p>
                 ) : error ? (
                   <p className="mt-3 text-sm text-brand-600 dark:text-brand-400">{error}</p>
-                ) : !shown ? (
-                  <p className="mt-3 animate-pulse text-sm text-neutral-500">Rating…</p>
-                ) : (
+                ) : !shown ? null : (
                   <div className="mt-4 flex flex-col gap-3">
                     <div className="flex items-center gap-4">
                       <span className={`display flex h-16 w-16 shrink-0 items-center justify-center rounded-lg text-5xl ${GRADE_STYLE[shown.grade]}`}>

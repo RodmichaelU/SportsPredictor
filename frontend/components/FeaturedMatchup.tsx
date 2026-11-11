@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Prediction } from "@/lib/types";
 import { formatGameDate, formatMargin, formatPercent, marketConfidence, pickConfidence } from "@/lib/format";
 import TeamBadge from "./TeamBadge";
+import { gamePath } from "@/lib/routes";
 
 function Side({ team, pct, isPick, sport, align }: { team: string; pct: number; isPick: boolean; sport: string; align: "left" | "right" }) {
   return (
@@ -40,7 +41,7 @@ export default function FeaturedMatchup({
 
   return (
     <Link
-      href={`/games/${p.game_id}?sport=${sport}`}
+      href={gamePath(sport, p.game_id)}
       className={`group relative flex flex-col overflow-hidden rounded-md bg-ink-900 text-white ring-1 ring-white/10 transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-2xl hover:ring-brand-500/60 ${className}`}
     >
       <div aria-hidden className="broadcast-bg pointer-events-none absolute inset-0 opacity-50" />

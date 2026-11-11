@@ -1,80 +1,8 @@
-import Link from "next/link";
-import { getPredictions, getSports } from "@/lib/api";
-import { Prediction } from "@/lib/types";
-import { pickConfidence } from "@/lib/format";
-import PredictionCard from "@/components/PredictionCard";
-import ComingSoon from "@/components/ComingSoon";
-import FeaturedMatchup from "@/components/FeaturedMatchup";
-import MarketDisagreements from "@/components/MarketDisagreements";
-import PageBand from "@/components/PageBand";
-import SectionHeader from "@/components/SectionHeader";
-import Reveal from "@/components/Reveal";
+import { getSports } from "@/lib/api";
+import SportPage from "./[sport]/page";
 
-function dayKey(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
-}
-
-export default async function PredictionsPage(props: PageProps<"/predictions">) {
-  const searchParams = await props.searchParams;
+// /predictions/ shows the default league -- the same page as /predictions/<first league>/.
+export default async function Page() {
   const sports = await getSports();
-  const sport = (searchParams.sport as string) ?? sports[0]?.id ?? "cfb";
-  const sportInfo = sports.find((s) => s.id === sport);
-
-  if (sportInfo?.status === "coming_soon") {
-    return <ComingSoon sport={sportInfo} />;
-  }
-
-  const predictions = await getPredictions(sport);
-  const strongest = [...predictions].sort((a, b) => pickConfidence(b) - pickConfidence(a))[0];
-
-  // Chronological, grouped by game day.
-  const days: { day: string; games: Prediction[] }[] = [];
-  for (const p of [...predictions].sort((a, b) => a.game_date.localeCompare(b.game_date))) {
-    const day = dayKey(p.game_date);
-    if (days.at(-1)?.day !== day) days.push({ day, games: [] });
-    days.at(-1)!.games.push(p);
-  }
-
-  return (
-    <div className="flex flex-col gap-12 sm:gap-16">
-      <PageBand
-        eyebrow={sportInfo?.name ?? sport.toUpperCase()}
-        title="This week's picks"
-        description={
-          <>
-            {predictions.length} upcoming games, each frozen before kickoff. Tap any game to see why the
-            model likes its pick, or{" "}
-            <Link href={`/model?sport=${sport}`} className="underline decoration-white/30 underline-offset-2 hover:text-brand-400">
-              how the model works
-            </Link>
-            .
-          </>
-        }
-        aside={
-          strongest && (
-            <FeaturedMatchup prediction={strongest} sport={sport} label="Strongest pick" className="w-full lg:w-[26rem]" />
-          )
-        }
-      />
-
-      {predictions.length === 0 ? (
-        <p className="text-sm text-neutral-500">No upcoming predictions for this sport yet.</p>
-      ) : (
-        <>
-          <MarketDisagreements predictions={predictions} sport={sport} />
-
-          {days.map(({ day, games }) => (
-            <Reveal as="section" key={day}>
-              <SectionHeader title={day} eyebrow={`${games.length} game${games.length === 1 ? "" : "s"}`} />
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                {games.map((p) => (
-                  <PredictionCard key={p.game_id} prediction={p} sport={sport} />
-                ))}
-              </div>
-            </Reveal>
-          ))}
-        </>
-      )}
-    </div>
-  );
+  return <SportPage params={Promise.resolve({ sport: sports[0]?.id ?? "cfb" })} searchParams={Promise.resolve({})} />;
 }

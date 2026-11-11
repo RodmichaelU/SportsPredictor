@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getSports, getTeam } from "@/lib/api";
+import { getSports, getTeamBySlug, getTeamSlugs } from "@/lib/api";
+import { gamePath, teamPath, teamsPath } from "@/lib/routes";
 import { Result, TeamGame } from "@/lib/types";
 import { pickConfidence } from "@/lib/format";
 import ComingSoon from "@/components/ComingSoon";
@@ -16,17 +17,21 @@ function isDecided(g: TeamGame): g is TeamGame & Result {
   return g.hit !== null;
 }
 
-// Reuses the same getTeam call the page below makes -- Next memoizes
-// fetches with identical args across generateMetadata and the page
-// component in one request, so this doesn't cost a second round-trip.
-export async function generateMetadata(props: PageProps<"/teams/[team]">): Promise<Metadata> {
-  const { team: encodedTeam } = await props.params;
-  const searchParams = await props.searchParams;
-  const team = decodeURIComponent(encodedTeam);
-  const sport = (searchParams.sport as string) ?? "cfb";
+// Pre-built for every team the exporter wrote a page for, per live league.
+// The URL segment is the exporter's slug ("miami-oh"), not the raw name.
+export async function generateStaticParams() {
+  const sports = (await getSports()).filter((s) => s.status === "live");
+  const slugs = await Promise.all(sports.map((s) => getTeamSlugs(s.id)));
+  return sports.flatMap((s, i) => Object.values(slugs[i]).map((team) => ({ sport: s.id, team })));
+}
+export const dynamicParams = false;
+
+// Reads the same exported file the page below does (lib/api.ts memoizes it).
+export async function generateMetadata(props: PageProps<"/teams/[sport]/[team]">): Promise<Metadata> {
+  const { sport, team } = await props.params;
 
   try {
-    const data = await getTeam(sport, team);
+    const data = await getTeamBySlug(sport, team);
     const elo = data.current_elo !== null ? ` · Elo ${Math.round(data.current_elo)}` : "";
     return {
       title: data.team,
@@ -37,20 +42,17 @@ export async function generateMetadata(props: PageProps<"/teams/[team]">): Promi
   }
 }
 
-export default async function TeamPage(props: PageProps<"/teams/[team]">) {
-  const { team: encodedTeam } = await props.params;
-  const searchParams = await props.searchParams;
-  const team = decodeURIComponent(encodedTeam);
+export default async function TeamPage(props: PageProps<"/teams/[sport]/[team]">) {
+  const { sport, team } = await props.params;
 
   const sports = await getSports();
-  const sport = (searchParams.sport as string) ?? sports[0]?.id ?? "cfb";
   const sportInfo = sports.find((s) => s.id === sport);
 
   if (sportInfo?.status === "coming_soon") {
     return <ComingSoon sport={sportInfo} />;
   }
 
-  const data = await getTeam(sport, team);
+  const [data, slugs] = await Promise.all([getTeamBySlug(sport, team), getTeamSlugs(sport)]);
   const upcoming = data.games.filter((g) => !isDecided(g));
   const decided = data.games.filter(isDecided).slice().reverse();
 
@@ -63,7 +65,7 @@ export default async function TeamPage(props: PageProps<"/teams/[team]">) {
       <section className="bleed relative -mt-8 overflow-hidden bg-ink-950 text-white">
         <div aria-hidden className="broadcast-bg pointer-events-none absolute inset-0 opacity-70" />
         <div className="bleed-inner relative py-8">
-          <Link href={`/teams?sport=${sport}`} className="eyebrow text-xs text-neutral-400 hover:text-white">
+          <Link href={teamsPath(sport)} className="eyebrow text-xs text-neutral-400 hover:text-white">
             ‹ All teams
           </Link>
           <div className="mt-6 flex flex-wrap items-end justify-between gap-8">
@@ -146,7 +148,7 @@ export default async function TeamPage(props: PageProps<"/teams/[team]">) {
                       </td>
                       <td className="px-3 py-2.5 sm:px-4">
                         <Link
-                          href={`/teams/${encodeURIComponent(opponent)}?sport=${sport}`}
+                          href={slugs[opponent] ? teamPath(sport, slugs[opponent]) : teamsPath(sport)}
                           className="flex items-center gap-2 hover:text-brand-600 dark:hover:text-brand-400"
                         >
                           <span className="w-4 text-xs text-neutral-400">{isHome ? "vs" : "@"}</span>
@@ -164,7 +166,7 @@ export default async function TeamPage(props: PageProps<"/teams/[team]">) {
                         {g.predicted_winner} ({Math.round(pickConfidence(g) * 100)}%)
                       </td>
                       <td className="px-3 py-2.5 sm:px-4 text-right">
-                        <Link href={`/games/${g.game_id}?sport=${sport}`} className="inline-flex items-center gap-2">
+                        <Link href={gamePath(sport, g.game_id)} className="inline-flex items-center gap-2">
                           <HitBadge hit={g.hit} />
                         </Link>
                       </td>

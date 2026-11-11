@@ -1,58 +1,69 @@
+// Server-side data access for the static site. Reads the JSON files
+// src/export_static.py writes to public/data/ (regenerated on every refresh),
+// so pages are built from the same responses the API would return -- field
+// names match lib/types.ts exactly. Server components only: this reads the
+// filesystem at build time. Browser code uses lib/clientData.ts instead.
+//
+// With no export present (fresh clone, UI work), falls back to mock data.
+
+import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { MOCK_ACCURACY, MOCK_ACCURACY_BY_WEEK, MOCK_CALIBRATION, MOCK_EXPLANATION, mockModelCurve, MOCK_MODEL_WEIGHTS, MOCK_PREDICTIONS, MOCK_RESULTS, MOCK_SPORTS, MOCK_STANDINGS, mockTeamDetail, MOCK_TEAMS } from "./mockData";
-import { AccuracyByWeek, AccuracySummary, Calibration, CurveTarget, Explanation, ModelCurve, ModelWeights, ParlayRating, Parlays, Prediction, Result, Sport, Standings, TeamDetail } from "./types";
+import { AccuracyByWeek, AccuracySummary, Calibration, CurveTarget, Explanation, ModelCurve, ModelWeights, Parlays, Prediction, Result, Sport, Standings, TeamDetail } from "./types";
 
-// With NEXT_PUBLIC_API_URL unset, falls back to mock data (useful for UI
-// work without the backend running). Set it to point at api/main.py
-// (Phase 6) for real predictions -- response shapes already match exactly.
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+const DATA_DIR = path.join(process.cwd(), "public", "data");
+const HAS_DATA = existsSync(path.join(DATA_DIR, "meta.json"));
 
-async function fetchJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE_URL}${path}`, { cache: "no-store" });
-  if (!res.ok) {
-    throw new Error(`API request failed (${res.status}): ${path}`);
+export const isLiveData = HAS_DATA;
+
+export interface SiteMeta {
+  refreshed_at: string; // ISO timestamp: when the data (and its market prices) was exported
+  refresh_interval_hours: number;
+}
+
+const cache = new Map<string, Promise<unknown>>();
+
+// Memoized per build: hundreds of pages read the same few files.
+function readJson<T>(rel: string): Promise<T> {
+  if (!cache.has(rel)) {
+    cache.set(rel, readFile(path.join(DATA_DIR, rel), "utf8").then((text) => JSON.parse(text)));
   }
-  return res.json();
+  return cache.get(rel) as Promise<T>;
+}
+
+export async function getMeta(): Promise<SiteMeta | null> {
+  if (!HAS_DATA) return null;
+  return readJson<SiteMeta>("meta.json");
 }
 
 export async function getSports(): Promise<Sport[]> {
-  if (!API_BASE_URL) return MOCK_SPORTS;
-  return fetchJson<Sport[]>("/sports");
+  if (!HAS_DATA) return MOCK_SPORTS;
+  return readJson<Sport[]>("sports.json");
 }
 
 export async function getPredictions(sport: string, week?: number): Promise<Prediction[]> {
-  if (!API_BASE_URL) {
-    return MOCK_PREDICTIONS.filter(
-      (p) => p.sport === sport && (week === undefined || p.week === week)
-    );
-  }
-  const params = new URLSearchParams({ sport });
-  if (week !== undefined) params.set("week", String(week));
-  return fetchJson<Prediction[]>(`/predictions?${params}`);
+  const all = HAS_DATA ? await readJson<Prediction[]>(`${sport}/predictions.json`) : MOCK_PREDICTIONS.filter((p) => p.sport === sport);
+  return week === undefined ? all : all.filter((p) => p.week === week);
 }
 
 export async function getResults(sport: string, week?: number): Promise<Result[]> {
-  if (!API_BASE_URL) {
-    return MOCK_RESULTS.filter(
-      (r) => r.sport === sport && (week === undefined || r.week === week)
-    );
-  }
-  const params = new URLSearchParams({ sport });
-  if (week !== undefined) params.set("week", String(week));
-  return fetchJson<Result[]>(`/results?${params}`);
+  const all = HAS_DATA ? await readJson<Result[]>(`${sport}/results.json`) : MOCK_RESULTS.filter((r) => r.sport === sport);
+  return week === undefined ? all : all.filter((r) => r.week === week);
 }
 
 export async function getAccuracy(sport: string): Promise<AccuracySummary> {
-  if (!API_BASE_URL) return { ...MOCK_ACCURACY, sport };
-  return fetchJson<AccuracySummary>(`/accuracy?sport=${sport}`);
+  if (!HAS_DATA) return { ...MOCK_ACCURACY, sport };
+  return readJson<AccuracySummary>(`${sport}/accuracy.json`);
 }
 
 export async function getModelWeights(sport: string): Promise<ModelWeights> {
-  if (!API_BASE_URL) return { ...MOCK_MODEL_WEIGHTS, sport };
-  return fetchJson<ModelWeights>(`/model-weights?sport=${sport}`);
+  if (!HAS_DATA) return { ...MOCK_MODEL_WEIGHTS, sport };
+  return readJson<ModelWeights>(`${sport}/model-weights.json`);
 }
 
 export async function getExplanation(sport: string, gameId: string): Promise<Explanation> {
-  if (!API_BASE_URL) {
+  if (!HAS_DATA) {
     const game = [...MOCK_PREDICTIONS, ...MOCK_RESULTS].find((p) => p.game_id === gameId);
     return {
       ...MOCK_EXPLANATION,
@@ -64,70 +75,67 @@ export async function getExplanation(sport: string, gameId: string): Promise<Exp
       win_probability: game?.win_probability ?? MOCK_EXPLANATION.win_probability,
     };
   }
-  return fetchJson<Explanation>(`/explain?sport=${sport}&game_id=${encodeURIComponent(gameId)}`);
+  return readJson<Explanation>(`${sport}/explain/${gameId}.json`);
+}
+
+// Every game with an explanation page, for generateStaticParams.
+export async function getGameIds(sport: string): Promise<string[]> {
+  const [predictions, results] = await Promise.all([getPredictions(sport), getResults(sport)]);
+  return [...new Set([...predictions, ...results].map((g) => g.game_id))];
 }
 
 export async function getModelCurve(sport: string, feature: string, target: CurveTarget): Promise<ModelCurve> {
-  if (!API_BASE_URL) return mockModelCurve(sport, feature, target);
-  return fetchJson<ModelCurve>(`/model-curve?sport=${sport}&feature=${feature}&target=${target}`);
+  if (!HAS_DATA) return mockModelCurve(sport, feature, target);
+  return readJson<ModelCurve>(`${sport}/curves/${feature}__${target}.json`);
 }
 
 export async function getCalibration(sport: string): Promise<Calibration> {
-  if (!API_BASE_URL) return { ...MOCK_CALIBRATION, sport };
-  return fetchJson<Calibration>(`/calibration?sport=${sport}`);
+  if (!HAS_DATA) return { ...MOCK_CALIBRATION, sport };
+  return readJson<Calibration>(`${sport}/calibration.json`);
+}
+
+// team name -> URL slug ("Miami (OH)" -> "miami-oh"), as chosen by the exporter.
+export async function getTeamSlugs(sport: string): Promise<Record<string, string>> {
+  if (!HAS_DATA) {
+    return Object.fromEntries(MOCK_TEAMS.map((t) => [t, t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")]));
+  }
+  const teams = await readJson<{ team: string; slug: string }[]>(`${sport}/teams.json`);
+  return Object.fromEntries(teams.map((t) => [t.team, t.slug]));
 }
 
 export async function getTeams(sport: string): Promise<string[]> {
-  if (!API_BASE_URL) return MOCK_TEAMS;
-  return fetchJson<string[]>(`/teams?sport=${sport}`);
+  return Object.keys(await getTeamSlugs(sport)).sort();
 }
 
-export async function getTeam(sport: string, team: string): Promise<TeamDetail> {
-  if (!API_BASE_URL) return mockTeamDetail(sport, team);
-  return fetchJson<TeamDetail>(`/team?sport=${sport}&team=${encodeURIComponent(team)}`);
+export async function getTeamBySlug(sport: string, slug: string): Promise<TeamDetail> {
+  if (!HAS_DATA) {
+    const slugs = await getTeamSlugs(sport);
+    const team = Object.keys(slugs).find((t) => slugs[t] === slug) ?? slug;
+    return mockTeamDetail(sport, team);
+  }
+  return readJson<TeamDetail>(`${sport}/team/${slug}.json`);
 }
 
-// team name/code -> logo URL. Called from every TeamBadge instance, but
-// Next's request memoization collapses repeated calls with the same URL
-// into one actual fetch per render, so this doesn't mean one round-trip per
-// badge.
+// team name/code -> logo URL. Read once per build and shared by every
+// TeamBadge on every page.
 export async function getTeamLogos(sport: string): Promise<Record<string, string>> {
-  if (!API_BASE_URL) return {};
-  return fetchJson<Record<string, string>>(`/team-logos?sport=${sport}`);
+  if (!HAS_DATA) return {};
+  return readJson<Record<string, string>>(`${sport}/logos.json`).catch(() => ({}));
 }
 
 export async function getStandings(sport: string): Promise<Standings> {
-  if (!API_BASE_URL) return { ...MOCK_STANDINGS, sport };
-  return fetchJson<Standings>(`/standings?sport=${sport}`);
+  if (!HAS_DATA) return { ...MOCK_STANDINGS, sport };
+  return readJson<Standings>(`${sport}/standings.json`);
 }
 
 export async function getAccuracyByWeek(sport: string): Promise<AccuracyByWeek> {
-  if (!API_BASE_URL) return { ...MOCK_ACCURACY_BY_WEEK, sport };
-  return fetchJson<AccuracyByWeek>(`/accuracy-by-week?sport=${sport}`);
+  if (!HAS_DATA) return { ...MOCK_ACCURACY_BY_WEEK, sport };
+  return readJson<AccuracyByWeek>(`${sport}/accuracy-by-week.json`);
 }
 
-// Parlays at three risk tiers, pooled across the given sports (default:
-// every live sport). Needs real market prices, so there's no mock version.
-export async function getParlays(sports?: string[]): Promise<Parlays | null> {
-  if (!API_BASE_URL) return null;
-  const query = sports && sports.length ? `?sports=${sports.join(",")}` : "";
-  return fetchJson<Parlays>(`/parlays${query}`);
+// Parlays at three risk tiers for one sport, or pooled across every live
+// sport. Needs real market prices, so there's no mock version.
+export async function getParlays(sport?: string): Promise<Parlays | null> {
+  if (!HAS_DATA) return null;
+  return readJson<Parlays>(sport ? `${sport}/parlays.json` : "parlays/all.json");
 }
-
-// Grades a user-built parlay. Called from the browser as legs are picked, so
-// errors (a game that just started, say) come back as a message to show
-// rather than a thrown exception that would break the page.
-export async function getParlayRating(
-  legs: { sport: string; game_id: string; is_home: boolean }[],
-  signal?: AbortSignal
-): Promise<{ rating: ParlayRating } | { error: string }> {
-  const query = legs.map((l) => `${l.sport}:${l.game_id}:${l.is_home ? "home" : "away"}`).join(",");
-  const res = await fetch(`${API_BASE_URL}/parlay-rating?legs=${encodeURIComponent(query)}`, { cache: "no-store", signal });
-  if (!res.ok) {
-    const body = await res.json().catch(() => null);
-    return { error: body?.detail ?? `Couldn't rate this parlay (${res.status}).` };
-  }
-  return { rating: await res.json() };
-}
-
-export const isLiveApi = Boolean(API_BASE_URL);

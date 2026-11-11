@@ -3,6 +3,7 @@ import { Result } from "@/lib/types";
 import { formatGameDate, pickConfidence } from "@/lib/format";
 import TeamBadge from "./TeamBadge";
 import HitBadge from "./HitBadge";
+import { gamePath } from "@/lib/routes";
 
 function ScoreRow({ team, score, won, sport }: { team: string; score: number; won: boolean; sport: string }) {
   return (
@@ -25,7 +26,7 @@ export default function ResultCard({ result, sport }: { result: Result; sport: s
 
   return (
     <Link
-      href={`/games/${r.game_id}?sport=${sport}`}
+      href={gamePath(sport, r.game_id)}
       className="group flex flex-col gap-4 rounded-lg bg-white p-5 shadow-sm ring-1 ring-neutral-200/70 transition-[box-shadow,transform] duration-150 ease-out hover:-translate-y-0.5 hover:shadow-lg dark:bg-ink-900 dark:ring-white/10"
     >
       <div className="flex items-center justify-between">

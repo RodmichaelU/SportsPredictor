@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { parlaysPath, parsePath, predictionsPath } from "@/lib/routes";
 import { Sport } from "@/lib/types";
 
 // League tabs sit on the dark header: condensed uppercase labels with a
@@ -14,14 +15,15 @@ function linkClass(active: boolean) {
   }`;
 }
 
-export default function LeagueNav({ sports }: { sports: Sport[] }) {
+export default function LeagueNav({ sports, defaultSport }: { sports: Sport[]; defaultSport: string }) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const currentSport = searchParams.get("sport");
-  const onHome = pathname === "/";
-  // The Parlay Picker takes ?sport= as a filter too, but it's its own
-  // destination -- a league tab shouldn't light up there.
-  const onParlays = pathname === "/parlays";
+  const { section, sport } = parsePath(pathname);
+  const onHome = section === null;
+  // The Parlay Picker takes a league filter too (/parlays/nba/), but it's its
+  // own destination -- a league tab shouldn't light up there.
+  const onParlays = section === "parlays";
+  // A bare section URL (/results/) shows the default league.
+  const currentSport = sport ?? (onHome ? null : defaultSport);
 
   return (
     <nav className="no-scrollbar scroll-fade -mx-4 flex w-[calc(100%+2rem)] items-center gap-6 overflow-x-auto px-4 sm:mx-0 sm:w-auto sm:px-0">
@@ -31,7 +33,7 @@ export default function LeagueNav({ sports }: { sports: Sport[] }) {
       {sports.map((sport) => (
         <Link
           key={sport.id}
-          href={`/predictions?sport=${sport.id}`}
+          href={predictionsPath(sport.id)}
           className={`inline-flex items-center gap-1.5 ${linkClass(!onHome && !onParlays && currentSport === sport.id)}`}
         >
           {sport.name}
@@ -43,7 +45,7 @@ export default function LeagueNav({ sports }: { sports: Sport[] }) {
         </Link>
       ))}
       <Link
-        href="/parlays"
+        href={parlaysPath()}
         className={`eyebrow shrink-0 rounded-full px-3 py-1.5 text-[11px] whitespace-nowrap transition-colors ${
           onParlays ? "bg-brand-600 text-white" : "bg-white/10 text-white hover:bg-brand-600"
         }`}
