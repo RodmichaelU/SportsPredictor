@@ -1,0 +1,130 @@
+# Every 3 hours: refresh predictions/results/prices, export the site's data,
+# build the static site, and publish it to GitHub Pages. Replaces the Mac's
+# launchd agent -- results keep updating with no server.
+#
+# State that must survive between runs:
+#   - data/predictions.db (the track record): kept on the `data` branch, one
+#     commit replaced each run, plus a 14-day artifact backup per run.
+#   - data/raw + data/processed (cached API responses): Actions cache. Losing
+#     it only costs a re-download (~62 CFBD calls), not the track record.
+#
+# One-time setup: see deploy/README.md (repo secret CFBD_API_KEY, Pages source
+# "GitHub Actions", and seeding the data branch with your current database).
+name: Refresh and deploy
+
+on:
+  schedule:
+    - cron: "5 */3 * * *" # :05 past every third hour, UTC
+  workflow_dispatch: # "Run workflow" button for an on-demand refresh
+  push:
+    branches: [main] # code changes: rebuild the site (no refresh, no API calls)
+
+permissions:
+  contents: write # push the data branch
+  pages: write
+  id-token: write
+
+concurrency:
+  group: refresh-and-deploy
+  cancel-in-progress: false # never cut a refresh off mid-write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      REFRESH: ${{ github.event_name != 'push' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore prediction database from the data branch
+        run: |
+          if git fetch --depth=1 origin data 2>/dev/null; then
+            git show FETCH_HEAD:predictions.db > data/predictions.db
+            echo "Restored predictions.db ($(du -h data/predictions.db | cut -f1))"
+          else
+            echo "::warning::No data branch yet -- starting with an empty database. Seed it first (deploy/README.md)."
+          fi
+
+      - name: Restore API response cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            data/raw
+            data/processed
+          key: api-cache-${{ github.run_id }}
+          restore-keys: api-cache-
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Refresh (freeze picks, grade results, save prices, early lines)
+        if: env.REFRESH == 'true'
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        # A league failing (e.g. a data source down) exits non-zero but the
+        # other leagues still refreshed -- publish what we have.
+        run: python -u -m src.refresh --all || echo "::warning::Refresh had failures; see the log above."
+
+      - name: Save prediction database to the data branch
+        if: env.REFRESH == 'true'
+        run: |
+          tmp=$(mktemp -d)
+          cp data/predictions.db "$tmp/"
+          cd "$tmp"
+          git init -q -b data
+          git add predictions.db
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "Data as of $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" data
+
+      - name: Back up prediction database
+        if: env.REFRESH == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: predictions-db-${{ github.run_id }}
+          path: data/predictions.db
+          retention-days: 14
+
+      - name: Save API response cache
+        if: env.REFRESH == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            data/raw
+            data/processed
+          key: api-cache-${{ github.run_id }}
+
+      - name: Export site data
+        run: python -u -m src.export_static
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build static site
+        working-directory: frontend
+        run: |
+          npm ci
+          NEXT_PUBLIC_BASE_PATH=/${{ github.event.repository.name }} npx next build
+          touch out/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
