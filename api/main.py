@@ -88,7 +88,13 @@ def get_sports():
 
 
 @app.get("/predictions")
-def get_predictions(sport: str = "cfb", week: int | None = Query(default=None)):
+def get_predictions(
+    sport: str = "cfb", week: int | None = Query(default=None), include_early: bool = False
+):
+    """Upcoming frozen predictions. include_early adds early lines (flagged
+    early=True) after them, so a league isn't blank in the hours before its
+    games reach the freeze horizon -- the static export's predictions page
+    uses this; the Parlay Picker pool adds early lines itself."""
     conn = store.get_connection()
     query = "SELECT * FROM predictions WHERE sport = ? AND hit IS NULL"
     params = [sport]
@@ -100,7 +106,11 @@ def get_predictions(sport: str = "cfb", week: int | None = Query(default=None)):
     conn.close()
 
     markets = _market_prices(sport, rows)
-    return [_prediction_dict(r, markets.get(str(r["game_id"]))) for r in rows]
+    frozen = [_prediction_dict(r, markets.get(str(r["game_id"]))) for r in rows]
+    if not include_early:
+        return frozen
+    early = [p for p in _early_predictions(sport) if week is None or p["week"] == week]
+    return frozen + early
 
 
 # Kalshi's open markets per sport, reused for KALSHI_TTL_SECONDS so a burst
@@ -463,6 +473,12 @@ def get_explain(sport: str = "cfb", game_id: str = Query(...)):
     row = conn.execute(
         "SELECT * FROM predictions WHERE sport = ? AND game_id = ?", (sport, game_id)
     ).fetchone()
+    # Not frozen yet: explain its early line instead (see get_predictions).
+    early = row is None
+    if early:
+        row = conn.execute(
+            "SELECT * FROM early_predictions WHERE sport = ? AND game_id = ?", (sport, game_id)
+        ).fetchone()
     conn.close()
     if row is None:
         raise HTTPException(status_code=404, detail="No prediction on record for this game")
@@ -538,6 +554,7 @@ def get_explain(sport: str = "cfb", game_id: str = Query(...)):
         "predicted_winner": row["predicted_winner"],
         "win_probability": row["home_win_prob"],
         "model_version": row["model_version"],
+        "early": early,
         "groups": groups,
         "market_home_probability": market["home_probability"] if market else None,
         # "live" (fetched from Kalshi this request) or "snapshot" (the latest

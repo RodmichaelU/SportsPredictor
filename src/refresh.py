@@ -43,9 +43,10 @@ PREDICTION_HORIZON = {"nba": timedelta(hours=12)}
 
 # Games past the freeze horizon but inside this window get an *early*
 # prediction: computed every run with today's data, saved to
-# early_predictions (replaced each run), and used only to widen the Parlay
-# Picker's pool, flagged as early lines. Without it the NBA pool is just the
-# handful of games tipping off within 12 hours. Never frozen or graded.
+# early_predictions (replaced each run), and used to widen the Parlay
+# Picker's pool and fill the predictions page, flagged as early lines.
+# Without it the NBA page is empty overnight, until games come within 12
+# hours. Never frozen or graded.
 EARLY_HORIZON = {"nba": timedelta(hours=36)}
 
 # A game missing an input its sport needs before freezing (FREEZE_REQUIRES in
@@ -161,8 +162,8 @@ def refresh_sport(sport: str, season: int) -> dict:
         print(f"{sport}: predicting new games failed, still reconciling", file=sys.stderr)
         traceback.print_exc()
 
-    # Best-effort, like the Kalshi snapshot: early lines only widen the
-    # Parlay Picker's pool, so a failure here costs that and nothing else.
+    # Best-effort, like the Kalshi snapshot: early lines are only previews,
+    # so a failure here costs those and nothing else.
     if sport in EARLY_HORIZON and week_predicted is not None:
         try:
             pool = week_rows

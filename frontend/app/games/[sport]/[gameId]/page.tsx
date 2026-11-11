@@ -94,7 +94,11 @@ export default async function GameExplanationPage(props: PageProps<"/games/[spor
             <div className={homeIsPick ? "bg-neutral-600" : "bg-brand-500"} style={{ width: `${(1 - homePct) * 100}%` }} />
             <div className={homeIsPick ? "bg-brand-500" : "bg-neutral-600"} style={{ width: `${homePct * 100}%` }} />
           </div>
-          <p className="mt-3 text-center text-xs text-neutral-400">Win probability, as of when this prediction was frozen</p>
+          <p className="mt-3 text-center text-xs text-neutral-400">
+            {data.early
+              ? "Early line: win probability from today's data. It can still change until it freezes, about 12 hours before tip-off."
+              : "Win probability, as of when this prediction was frozen"}
+          </p>
         </div>
       </section>
 

@@ -9,8 +9,8 @@ so has accumulated, it can be trained on (see src/market_history.py).
 early_predictions is the opposite of predictions: a scratch table of
 not-yet-frozen predictions for games just beyond a sport's freeze horizon
 (NBA games 12-36 hours out), fully replaced on every refresh run. They feed
-only the Parlay Picker's pool, flagged as early lines -- never graded, never
-counted in accuracy, never shown as "the" prediction for a game.
+the Parlay Picker's pool and fill the predictions page until a game freezes,
+always flagged as early lines -- never graded, never counted in accuracy.
 
 Predictions are append-only once written -- predict.py uses INSERT OR IGNORE
 keyed on (sport, game_id), so a prediction already on record is never

@@ -84,7 +84,7 @@ def export(out: Path) -> dict:
     counts = {}
     for sport in live:
         d = tmp / sport
-        predictions = api.get_predictions(sport, week=None)
+        predictions = api.get_predictions(sport, week=None, include_early=True)
         results = api.get_results(sport, week=None)
         _write(d / "predictions.json", predictions)
         _write(d / "results.json", results)

@@ -33,6 +33,8 @@ export interface Prediction {
   // the latest pre-game price refresh.py saved (Kalshi unreachable live).
   market_source: "live" | "snapshot" | null;
   market_captured_at: string | null; // ISO timestamp; set for snapshots only
+  // An early line (see ParlayLeg.early): shown until the game is frozen.
+  early?: boolean;
 }
 
 export interface Result extends Prediction {
@@ -82,6 +84,7 @@ export interface Explanation {
   predicted_winner: string;
   win_probability: number;
   model_version: string;
+  early?: boolean; // explains an early line, not a frozen prediction
   groups: ExplanationGroup[]; // sorted by |contribution| descending
   market_home_probability: number | null; // Kalshi price (live or latest snapshot), null if no market matched
   market_source: "live" | "snapshot" | null;

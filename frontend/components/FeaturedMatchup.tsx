@@ -46,7 +46,10 @@ export default function FeaturedMatchup({
     >
       <div aria-hidden className="broadcast-bg pointer-events-none absolute inset-0 opacity-50" />
       <div className="relative flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 bg-brand-600 px-4 py-1.5">
-        <span className="eyebrow text-[11px] text-white">{label}</span>
+        <span className="eyebrow text-[11px] text-white">
+          {label}
+          {p.early && " · Early"}
+        </span>
         <span className="text-[11px] font-semibold tracking-wide text-white/80 uppercase">
           {sportLabel && <>{sportLabel} · </>}
           {formatGameDate(p.game_date)}

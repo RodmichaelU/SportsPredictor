@@ -33,6 +33,7 @@ export default async function PredictionsPage(props: PageProps<"/predictions/[sp
 
   const [predictions, meta] = await Promise.all([getPredictions(sport), getMeta()]);
   const strongest = [...predictions].sort((a, b) => pickConfidence(b) - pickConfidence(a))[0];
+  const earlyCount = predictions.filter((p) => p.early).length;
 
   // Chronological, grouped by game day.
   const days: { day: string; games: Prediction[] }[] = [];
@@ -49,8 +50,9 @@ export default async function PredictionsPage(props: PageProps<"/predictions/[sp
         title="This week's picks"
         description={
           <>
-            {predictions.length} upcoming games, each frozen before kickoff. Tap any game to see why the
-            model likes its pick, or{" "}
+            {predictions.length} upcoming games, each frozen before kickoff.
+            {earlyCount > 0 && " Picks marked Early can still change with injury news until they freeze, about 12 hours before tip-off."}{" "}
+            Tap any game to see why the model likes its pick, or{" "}
             <Link href={modelPath(sport)} className="underline decoration-white/30 underline-offset-2 hover:text-brand-400">
               how the model works
             </Link>

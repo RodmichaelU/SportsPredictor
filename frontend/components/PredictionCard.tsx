@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Prediction } from "@/lib/types";
 import { formatGameDate, formatPercent, marketConfidence, pickConfidence } from "@/lib/format";
+import EarlyTag from "./EarlyTag";
 import TeamBadge from "./TeamBadge";
 import { gamePath } from "@/lib/routes";
 
@@ -47,7 +48,10 @@ export default function PredictionCard({ prediction, sport }: { prediction: Pred
       className="group flex flex-col gap-4 rounded-lg bg-white p-5 shadow-sm ring-1 ring-neutral-200/70 transition-[box-shadow,transform] duration-150 ease-out hover:-translate-y-0.5 hover:shadow-lg dark:bg-ink-900 dark:ring-white/10"
     >
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-semibold tracking-wide text-neutral-500 uppercase">{formatGameDate(p.game_date)}</span>
+        <span className="flex items-center gap-2 text-[11px] font-semibold tracking-wide text-neutral-500 uppercase">
+          {formatGameDate(p.game_date)}
+          {p.early && <EarlyTag />}
+        </span>
         <span className="eyebrow text-[11px] text-neutral-400 transition-colors group-hover:text-brand-600 dark:group-hover:text-brand-400">
           Why ›
         </span>

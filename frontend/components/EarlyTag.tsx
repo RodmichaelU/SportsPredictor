@@ -1,4 +1,4 @@
-// Marks a not-yet-frozen preview line (see ParlayLeg.early).
+// Marks a not-yet-frozen preview line (see ParlayLeg.early, Prediction.early).
 export default function EarlyTag() {
   return (
     <span
