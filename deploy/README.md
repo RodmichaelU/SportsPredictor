@@ -44,7 +44,7 @@ Every page shows when the data was last updated ("Odds & results updated 3:05 PM
 
 ## Things to know
 
-- **NBA data from GitHub's servers:** the NBA's stats site is known to block or time out requests from some cloud providers. If the first run's log shows the NBA step failing, college football and NFL still update normally; NBA would need another source or a different runner.
+- **NBA data:** the NBA's stats site blocks GitHub's servers, so the current NBA season comes from ESPN's free public feed instead (`src/sports/nba/espn.py`), and finished seasons ship in `data/history/nba/`. When a season ends, ship it before bumping `CURRENT_SEASON` in `config.py`: `python -m src.sports.nba.ingest --ship 2026`, then commit `data/history/nba/`.
 - **Timing:** GitHub starts scheduled runs on a best-effort basis, so a refresh may land some minutes after `:05`, occasionally later at busy times.
 - **Inactivity:** GitHub pauses scheduled workflows in a repo with no activity for 60 days. The workflow pushes the `data` branch every run, but if the schedule is ever paused, re-enable it from the Actions tab.
 - **CFBD budget:** about 560 calls/month at this schedule (see `CFB_CACHE_MAX_AGE` in `src/refresh.py`).

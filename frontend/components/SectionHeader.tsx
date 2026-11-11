@@ -17,10 +17,17 @@ export default function SectionHeader({
 }) {
   return (
     <div className="mb-5 flex items-end justify-between gap-4">
-      <div className="flex items-baseline gap-3">
-        <span aria-hidden className="h-5 w-1 self-center rounded-full bg-brand-600" />
-        <h2 className={`display ${size === "sm" ? "text-xl" : "text-3xl"}`}>{title}</h2>
-        {eyebrow && <span className="text-sm text-neutral-500">{eyebrow}</span>}
+      {/* The note drops under the title on phones rather than squeezing
+          both into narrow side-by-side columns. */}
+      <div className="flex min-w-0 items-start gap-3">
+        <span
+          aria-hidden
+          className={`w-1 shrink-0 rounded-full bg-brand-600 ${size === "sm" ? "mt-[0.1rem] h-4" : "mt-1 h-5"}`}
+        />
+        <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-3">
+          <h2 className={`display ${size === "sm" ? "text-xl" : "text-3xl"}`}>{title}</h2>
+          {eyebrow && <span className="text-sm text-neutral-500">{eyebrow}</span>}
+        </div>
       </div>
       {href && (
         <Link href={href} className="eyebrow shrink-0 text-xs text-brand-600 hover:text-brand-700 dark:text-brand-400">

@@ -4,6 +4,7 @@ import ModelCurveExplorer from "@/components/ModelCurveExplorer";
 import CalibrationChart from "@/components/CalibrationChart";
 import ComingSoon from "@/components/ComingSoon";
 import PageBand from "@/components/PageBand";
+import ChipRow, { chipClass } from "@/components/ChipRow";
 import RecordByConfidence from "@/components/RecordByConfidence";
 import SectionHeader, { Panel } from "@/components/SectionHeader";
 import Reveal from "@/components/Reveal";
@@ -131,13 +132,13 @@ export default async function ModelPage(props: PageProps<"/model/[sport]">) {
           </>
         }
       >
-        <nav className="flex flex-wrap gap-2">
+        <ChipRow>
           {SECTIONS.map((s) => (
-            <a key={s.id} href={`#${s.id}`} className="eyebrow rounded-full bg-white/10 px-4 py-2 text-xs text-white hover:bg-white/20">
+            <a key={s.id} href={`#${s.id}`} className={chipClass(false)}>
               {s.label}
             </a>
           ))}
-        </nav>
+        </ChipRow>
       </PageBand>
 
       {/* A numbered timeline: one rail, one step at a time. */}

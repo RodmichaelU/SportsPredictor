@@ -27,3 +27,6 @@ data/logs/
 
 # Static export (python -m src.export_static), regenerated every refresh
 frontend/public/data/
+
+# Finished NBA seasons (stats.nba.com is unreachable from GitHub runners)
+!data/history/**/*.parquet

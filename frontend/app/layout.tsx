@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { Barlow_Condensed, Geist, Geist_Mono } from "next/font/google";
 import { getMeta, getSports } from "@/lib/api";
-import LeagueNav from "@/components/LeagueNav";
+import LeagueNav, { ParlayShortcut } from "@/components/LeagueNav";
 import SecondaryNav from "@/components/SecondaryNav";
 import UpdatedAt from "@/components/UpdatedAt";
 import Logo from "@/components/Logo";
@@ -54,6 +54,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                 Sports<span className="text-brand-500">Predictor</span>
               </span>
             </Link>
+            <Suspense fallback={null}>
+              <ParlayShortcut />
+            </Suspense>
             <Suspense fallback={<div className="h-5 w-56" />}>
               <LeagueNav sports={sports} defaultSport={defaultSport} />
             </Suspense>
