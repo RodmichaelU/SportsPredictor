@@ -97,14 +97,25 @@ def _cache_is_fresh(path, season: int) -> bool:
     return datetime.now(timezone.utc) - written < IN_PROGRESS_TTL
 
 
+# Set once stats.nba.com has failed every retry in this process. It blocks or
+# silently stalls requests from some cloud hosts (GitHub's runners included),
+# and one export asks for the same seasons hundreds of times -- without this,
+# each ask would wait out its own timeouts and the run would never finish.
+_source_down = False
+
+
 def _with_retries(fetch, attempts: int = 3):
     """stats.nba.com intermittently times out under load -- retry with
     backoff rather than failing a whole multi-season build on one blip."""
+    global _source_down
+    if _source_down:
+        raise ConnectionError("stats.nba.com unreachable earlier in this run")
     for attempt in range(attempts):
         try:
             return fetch()
-        except (requests.exceptions.RequestException, ValueError):
+        except Exception:
             if attempt == attempts - 1:
+                _source_down = True
                 raise
             time.sleep(2 ** (attempt + 1))
 
@@ -113,7 +124,12 @@ def _cached(name: str, season: int, fetch) -> pd.DataFrame:
     path = _cache_path(name, season)
     if _cache_is_fresh(path, season):
         return pd.read_parquet(path)
-    df = _with_retries(fetch)
+    try:
+        df = _with_retries(fetch)
+    except Exception:
+        if path.exists():  # stale beats nothing when the source is down
+            return pd.read_parquet(path)
+        raise
     df.to_parquet(path, index=False)
     return df
 
@@ -140,7 +156,7 @@ def ingest_season_games(start_year: int) -> pd.DataFrame:
             season_nullable=_season_string(start_year),
             league_id_nullable="00",
             season_type_nullable="Regular Season",
-            timeout=60,
+            timeout=30,
         ).get_data_frames()[0]
 
     return _cached("team_games", start_year, fetch)
@@ -154,7 +170,7 @@ def ingest_player_games(start_year: int) -> pd.DataFrame:
             league_id="00",
             player_or_team_abbreviation="P",
             season_type_all_star="Regular Season",
-            timeout=60,
+            timeout=30,
         ).get_data_frames()[0]
 
     return _cached("player_games", start_year, fetch)
@@ -175,7 +191,7 @@ def ingest_schedule(start_year: int) -> pd.DataFrame:
     """Regular-season schedule, one row per game, played or not."""
     def fetch():
         raw = scheduleleaguev2.ScheduleLeagueV2(
-            season=_season_string(start_year), league_id="00", timeout=60
+            season=_season_string(start_year), league_id="00", timeout=30
         ).get_data_frames()[0]
         return raw[
             ["gameId", "gameStatus", "gameDateEst", "gameDateTimeUTC", "isNeutral",
