@@ -1,5 +1,6 @@
-"""NBA data via nba_api (a wrapper around stats.nba.com) plus ESPN's public
-injury feed. Both free, no API key.
+"""NBA data via nba_api (a wrapper around stats.nba.com) for finished
+seasons, ESPN's public site API for the in-progress one (espn.py, reshaped
+into the same tables), plus ESPN's injury feed. All free, no API key.
 
 Four raw sources, all confirmed live while building this:
   - LeagueGameFinder: one row per team per game (not one row per game like
@@ -16,7 +17,14 @@ Four raw sources, all confirmed live while building this:
 Every stats.nba.com response is cached to data/raw/nba/ as parquet. A
 season's cache is permanent once it was written after that season ended
 (July 1 of the following year); an in-progress season's cache expires after
-IN_PROGRESS_TTL so live predictions don't run on stale results. Every ESPN
+IN_PROGRESS_TTL so live predictions don't run on stale results.
+
+Finished seasons' tables are also committed under data/history/nba/ and read
+from there first: stats.nba.com blocks cloud hosts like GitHub's runners,
+where the site is refreshed, so a fresh checkout can't download them. The
+current season (config.CURRENT_SEASON on) comes from ESPN instead, on every
+machine, so its ids and numbers never depend on which host ran.
+To ship a season once it's over: python -m src.sports.nba.ingest --ship SEASON Every ESPN
 injury pull is snapshotted to data/raw/nba/injuries/ so a frozen prediction
 can always be traced back to the exact report it used.
 
@@ -26,6 +34,7 @@ Run: python -m src.sports.nba.ingest [--start YEAR] [--end YEAR]
 import argparse
 import json
 import re
+import shutil
 import time
 import unicodedata
 from datetime import datetime, timedelta, timezone
@@ -38,6 +47,7 @@ from nba_api.stats.static import teams as static_teams
 import config
 
 RAW_NBA_DIR = config.RAW_DIR / "nba"
+HISTORY_DIR = config.BASE_DIR / "data" / "history" / "nba"
 INJURY_DIR = RAW_NBA_DIR / "injuries"
 RAW_NBA_DIR.mkdir(parents=True, exist_ok=True)
 INJURY_DIR.mkdir(parents=True, exist_ok=True)
@@ -97,35 +107,41 @@ def _cache_is_fresh(path, season: int) -> bool:
     return datetime.now(timezone.utc) - written < IN_PROGRESS_TTL
 
 
-# Set once stats.nba.com has failed every retry in this process. It blocks or
+# Sources that failed every retry in this process. stats.nba.com blocks or
 # silently stalls requests from some cloud hosts (GitHub's runners included),
 # and one export asks for the same seasons hundreds of times -- without this,
 # each ask would wait out its own timeouts and the run would never finish.
-_source_down = False
+_sources_down: set[str] = set()
 
 
-def _with_retries(fetch, attempts: int = 3):
-    """stats.nba.com intermittently times out under load -- retry with
+def _with_retries(fetch, source: str, attempts: int = 3):
+    """Both sources intermittently time out under load -- retry with
     backoff rather than failing a whole multi-season build on one blip."""
-    global _source_down
-    if _source_down:
-        raise ConnectionError("stats.nba.com unreachable earlier in this run")
+    if source in _sources_down:
+        raise ConnectionError(f"{source} unreachable earlier in this run")
     for attempt in range(attempts):
         try:
             return fetch()
         except Exception:
             if attempt == attempts - 1:
-                _source_down = True
+                _sources_down.add(source)
                 raise
             time.sleep(2 ** (attempt + 1))
 
 
+def _from_espn(season: int) -> bool:
+    return season >= config.CURRENT_SEASON
+
+
 def _cached(name: str, season: int, fetch) -> pd.DataFrame:
+    shipped = HISTORY_DIR / f"{name}_{season}.parquet"
+    if not _from_espn(season) and shipped.exists():
+        return pd.read_parquet(shipped)
     path = _cache_path(name, season)
     if _cache_is_fresh(path, season):
         return pd.read_parquet(path)
     try:
-        df = _with_retries(fetch)
+        df = _with_retries(fetch, "ESPN" if _from_espn(season) else "stats.nba.com")
     except Exception:
         if path.exists():  # stale beats nothing when the source is down
             return pd.read_parquet(path)
@@ -152,6 +168,10 @@ def ingest_season_games(start_year: int) -> pd.DataFrame:
     (preseason/regular/playoffs mixed together) without this filter, which
     inflates counts well past the real 1,230-game regular season."""
     def fetch():
+        if _from_espn(start_year):
+            from src.sports.nba import espn  # imports this module
+
+            return espn.team_games(start_year)
         return leaguegamefinder.LeagueGameFinder(
             season_nullable=_season_string(start_year),
             league_id_nullable="00",
@@ -165,6 +185,10 @@ def ingest_season_games(start_year: int) -> pd.DataFrame:
 def ingest_player_games(start_year: int) -> pd.DataFrame:
     """One row per player per regular-season game they actually played in."""
     def fetch():
+        if _from_espn(start_year):
+            from src.sports.nba import espn  # imports this module
+
+            return espn.player_games(start_year)
         return leaguegamelog.LeagueGameLog(
             season=_season_string(start_year),
             league_id="00",
@@ -190,6 +214,10 @@ def _week_numbers(game_dates: pd.Series) -> pd.Series:
 def ingest_schedule(start_year: int) -> pd.DataFrame:
     """Regular-season schedule, one row per game, played or not."""
     def fetch():
+        if _from_espn(start_year):
+            from src.sports.nba import espn  # imports this module
+
+            return espn.schedule(start_year)
         raw = scheduleleaguev2.ScheduleLeagueV2(
             season=_season_string(start_year), league_id="00", timeout=30
         ).get_data_frames()[0]
@@ -198,8 +226,13 @@ def ingest_schedule(start_year: int) -> pd.DataFrame:
              "postponedStatus", "homeTeam_teamTricode", "awayTeam_teamTricode"]
         ]
 
-    raw = _cached("schedule", start_year, fetch)
-    raw = raw[raw["gameId"].str.startswith(REGULAR_SEASON_PREFIX)]
+    return _schedule_frame(_cached("schedule", start_year, fetch), start_year)
+
+
+def _schedule_frame(raw: pd.DataFrame, start_year: int) -> pd.DataFrame:
+    # ESPN-sourced ids for games the NBA schedule didn't list start with "E"
+    # (see espn.game_ids); espn.py already dropped non-regular-season games.
+    raw = raw[raw["gameId"].str.startswith(REGULAR_SEASON_PREFIX) | raw["gameId"].str.startswith("E")]
     game_date = raw["gameDateEst"].str[:10]
     sched = pd.DataFrame(
         {
@@ -359,11 +392,30 @@ def standings(season: int) -> list[dict]:
     return list(records.values())
 
 
+def ship_season(season: int, names=("team_games", "player_games", "schedule")) -> list:
+    """Copy a season's cached tables into data/history/nba/ (committed), so
+    fresh checkouts never need to download it. For a finished season, or
+    just the schedule of the current one (espn.py's game-id lookup)."""
+    HISTORY_DIR.mkdir(parents=True, exist_ok=True)
+    shipped = []
+    for name in names:
+        path = _cache_path(name, season)
+        if path.exists():
+            shutil.copy2(path, HISTORY_DIR / path.name)
+            shipped.append(path.name)
+    return shipped
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--start", type=int, default=config.START_SEASON)
     parser.add_argument("--end", type=int, default=config.CURRENT_SEASON)
+    parser.add_argument("--ship", type=int, metavar="SEASON", help="copy a season's cache into data/history/nba/ and exit")
     args = parser.parse_args()
+
+    if args.ship:
+        print("Shipped:", ", ".join(ship_season(args.ship)) or "nothing cached for that season")
+        return
 
     for year in range(args.start, args.end + 1):
         team_rows = len(ingest_season_games(year))
