@@ -34,6 +34,7 @@ jobs:
     timeout-minutes: 60
     env:
       REFRESH: ${{ github.event_name != 'push' }}
+      CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
     steps:
       - uses: actions/checkout@v4
 
