@@ -66,3 +66,7 @@ bet365 and similar bookmakers have no public API and weren't scraped; Polymarket
 ## Frontend
 
 See [frontend/README.md](frontend/README.md). Requires Node 20.9+ (`brew install node@20`, since it's newer than most system defaults).
+
+## Deploying
+
+See [deploy/README.md](deploy/README.md): one free always-on server runs the API, the site, and the 3-hourly refresh (systemd timer), so results keep updating without the Mac.

@@ -6,6 +6,12 @@ refresh run, captured only before the game starts. There's no free archive
 of historical NBA odds, so this builds one going forward -- once a season or
 so has accumulated, it can be trained on (see src/market_history.py).
 
+early_predictions is the opposite of predictions: a scratch table of
+not-yet-frozen predictions for games just beyond a sport's freeze horizon
+(NBA games 12-36 hours out), fully replaced on every refresh run. They feed
+only the Parlay Picker's pool, flagged as early lines -- never graded, never
+counted in accuracy, never shown as "the" prediction for a game.
+
 Predictions are append-only once written -- predict.py uses INSERT OR IGNORE
 keyed on (sport, game_id), so a prediction already on record is never
 overwritten even if the same week is predicted again. That's what makes the
@@ -49,6 +55,21 @@ CREATE TABLE IF NOT EXISTS market_snapshots (
     volume REAL,
     event_ticker TEXT,
     PRIMARY KEY (sport, game_id, captured_at)
+);
+CREATE TABLE IF NOT EXISTS early_predictions (
+    sport TEXT NOT NULL,
+    game_id TEXT NOT NULL,
+    season INTEGER NOT NULL,
+    week INTEGER NOT NULL,
+    home_team TEXT NOT NULL,
+    away_team TEXT NOT NULL,
+    game_date TEXT NOT NULL,
+    predicted_at TEXT NOT NULL,
+    home_win_prob REAL NOT NULL,
+    predicted_winner TEXT NOT NULL,
+    predicted_margin REAL NOT NULL,
+    model_version TEXT NOT NULL,
+    PRIMARY KEY (sport, game_id)
 );
 """
 

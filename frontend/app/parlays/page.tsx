@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getParlays, getSports } from "@/lib/api";
+import { getParlays, getSports, getTeamLogos } from "@/lib/api";
 import PageBand from "@/components/PageBand";
+import ParlayBuilder from "@/components/ParlayBuilder";
 import ParlayTierCard from "@/components/ParlayTierCard";
 import SectionHeader from "@/components/SectionHeader";
 import Reveal from "@/components/Reveal";
@@ -34,8 +35,13 @@ export default async function ParlaysPage(props: PageProps<"/parlays">) {
     ? searchParams.sport
     : null;
 
-  const parlays = await getParlays(selected ? [selected] : undefined);
+  const [parlays, logoMaps] = await Promise.all([
+    getParlays(selected ? [selected] : undefined),
+    Promise.all(liveSports.map((s) => getTeamLogos(s.id))),
+  ]);
+  const logos = Object.fromEntries(liveSports.map((s, i) => [s.id, logoMaps[i]]));
   const snapshotLeg = parlays?.tiers.flatMap((t) => t.legs).find((leg) => leg.market_source === "snapshot");
+  const hasEarly = parlays?.candidates.some((leg) => leg.early);
 
   return (
     <div className="flex flex-col gap-12 sm:gap-16">
@@ -92,9 +98,32 @@ export default async function ParlaysPage(props: PageProps<"/parlays">) {
                 })}
                 .
               </>
+            )}
+            {hasEarly && (
+              <>
+                {" "}
+                Legs tagged <span className="font-semibold text-sky-600 dark:text-sky-400">Early</span> are NBA games more
+                than 12 hours out: predicted from today&apos;s data but not frozen yet, so injury news can still change them.
+              </>
             )}{" "}
             For research and entertainment, not betting advice.
           </p>
+
+          {parlays.candidates.length > 0 && (
+            <section id="build">
+              <SectionHeader title="Build your own" eyebrow="Pick any games, get a grade" />
+              <p className="-mt-2 mb-6 max-w-2xl text-sm text-neutral-500">
+                Tap a team in each game you want. The grade weighs how likely your parlay is to hit against
+                what it pays, using the model&apos;s numbers and the market&apos;s prices, and flags any leg the
+                market is charging too much for.
+              </p>
+              <ParlayBuilder
+                candidates={parlays.candidates}
+                logos={logos}
+                leagueNames={Object.fromEntries(liveSports.map((s) => [s.id, s.id.toUpperCase()]))}
+              />
+            </section>
+          )}
 
           <Reveal as="section">
             <SectionHeader title="How the picks are chosen" href="/model" linkLabel="About the model" />

@@ -133,3 +133,56 @@ def test_no_value_slate_falls_back_to_labeled_model_favorites():
             assert leg["market_probability"] <= tier.max_market_prob
             assert abs(leg["edge"]) <= parlay.MAX_EDGE
     assert out["tiers"][0]["available"], "low risk should fall back rather than stay empty"
+
+
+# --- Build-your-own rating -------------------------------------------------
+
+
+def _legs(*games):
+    """Candidate legs for the given (model_home, market_home, side) specs."""
+    preds = [_game(100 + i, m, q) for i, (m, q, _) in enumerate(games)]
+    legs = {(leg["game_id"], leg["is_home"]): leg for leg in parlay.candidate_legs(preds, NOW, timedelta(days=7))}
+    return [legs[(f"g{100 + i}", side == "home")] for i, (_, _, side) in enumerate(games)]
+
+
+def test_value_parlay_grades_well_and_overpriced_grades_badly():
+    good = parlay.rate_parlay(_legs((0.70, 0.60, "home"), (0.66, 0.55, "home"), (0.60, 0.50, "home")))
+    bad = parlay.rate_parlay(_legs((0.64, 0.78, "home"), (0.57, 0.68, "home")))
+    assert good["grade"] in ("A", "B") and good["expected_return"] > 0
+    assert bad["grade"] in ("D", "F") and bad["expected_return"] < 0
+    assert bad["counts"]["overpriced"] == 2
+    assert bad["weakest_leg"]["team"] == "H100"  # the 14-point overprice
+
+
+def test_suspect_legs_cannot_inflate_the_grade():
+    # A 40-point "edge" is treated as a data problem: priced at the market.
+    rated = parlay.rate_parlay(_legs((0.60, 0.20, "home"), (0.70, 0.69, "home")))
+    suspect = rated["legs"][0]
+    assert suspect["verdict"] == "suspect"
+    assert suspect["trusted_probability"] == suspect["market_probability"]
+    assert rated["expected_return"] < 0.05
+
+
+def test_rating_totals_and_verdicts():
+    rated = parlay.rate_parlay(_legs((0.70, 0.60, "home"), (0.50, 0.50, "home"), (0.45, 0.55, "away")))
+    assert [leg["verdict"] for leg in rated["legs"]] == ["value", "fair", "value"]
+    assert math.isclose(rated["decimal_odds"], math.prod(leg["decimal_odds"] for leg in rated["legs"]))
+    assert 0 <= rated["score"] <= 100
+
+
+def test_rating_rejects_invalid_slips():
+    import pytest
+
+    one = _legs((0.70, 0.60, "home"))
+    with pytest.raises(ValueError):
+        parlay.rate_parlay(one)  # a single leg isn't a parlay
+    both_sides = parlay.candidate_legs([_game(200, 0.6, 0.5)], NOW, timedelta(days=7))
+    with pytest.raises(ValueError):
+        parlay.rate_parlay(both_sides)  # both sides of one game
+
+
+def test_early_lines_are_flagged_through_to_legs():
+    early = {**_game(300, 0.70, 0.60), "early": True}
+    legs = parlay.candidate_legs([early, _game(301, 0.70, 0.60)], NOW, timedelta(days=7))
+    by_game = {leg["game_id"]: leg["early"] for leg in legs}
+    assert by_game == {"g300": True, "g301": False}

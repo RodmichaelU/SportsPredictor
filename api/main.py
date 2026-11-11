@@ -8,6 +8,8 @@ Run: uvicorn api.main:app --reload
 """
 
 import sys
+import time
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -101,6 +103,28 @@ def get_predictions(sport: str = "cfb", week: int | None = Query(default=None)):
     return [_prediction_dict(r, markets.get(str(r["game_id"]))) for r in rows]
 
 
+# Kalshi's open markets per sport, reused for KALSHI_TTL_SECONDS so a burst
+# of requests (every page load, every Parlay Picker rating as legs are
+# tapped) costs one Kalshi fetch, not dozens. Failures are cached too, so an
+# unreachable Kalshi falls straight through to snapshots instead of timing
+# out on every request. refresh.py doesn't go through here and always
+# fetches fresh.
+KALSHI_TTL_SECONDS = 60
+_kalshi_cache: dict[str, tuple[float, dict]] = {}
+
+
+def _kalshi_index(sport: str) -> dict:
+    cached = _kalshi_cache.get(sport)
+    if cached and time.monotonic() - cached[0] < KALSHI_TTL_SECONDS:
+        return cached[1]
+    try:
+        index = kalshi.build_index(sport)
+    except Exception:
+        index = {}
+    _kalshi_cache[sport] = (time.monotonic(), index)
+    return index
+
+
 def _market_prices(sport: str, rows) -> dict[str, dict]:
     """game_id -> market price for each prediction row: Kalshi live when it
     matches, otherwise the latest pre-game snapshot refresh.py saved.
@@ -109,10 +133,7 @@ def _market_prices(sport: str, rows) -> dict[str, dict]:
     same index, rather than one HTTP round-trip per game. Best-effort: a
     Kalshi outage falls back to snapshots instead of taking the endpoint down.
     """
-    try:
-        market_index = kalshi.build_index(sport)
-    except Exception:
-        market_index = {}
+    market_index = _kalshi_index(sport)
     snapshots = market_history.latest_prices(sport)
 
     prices = {}
@@ -126,10 +147,41 @@ def _market_prices(sport: str, rows) -> dict[str, dict]:
     return prices
 
 
+def _early_predictions(sport: str) -> list[dict]:
+    """Not-yet-frozen predictions for games just past the sport's freeze
+    horizon (see refresh.EARLY_HORIZON), with market prices, flagged
+    early=True. Parlay Picker pool only -- never graded or shown as the
+    game's prediction. Skips any game that has since been frozen, so a game
+    is never in the pool twice."""
+    conn = store.get_connection()
+    rows = conn.execute(
+        """
+        SELECT * FROM early_predictions e
+        WHERE e.sport = ?
+          AND NOT EXISTS (SELECT 1 FROM predictions p WHERE p.sport = e.sport AND p.game_id = e.game_id)
+        ORDER BY game_date
+        """,
+        (sport,),
+    ).fetchall()
+    conn.close()
+    markets = _market_prices(sport, rows)
+    return [{**_prediction_dict(r, markets.get(str(r["game_id"]))), "early": True} for r in rows]
+
+
+def _parlay_pool(sports: list[str]) -> list[dict]:
+    """Every upcoming prediction the Parlay Picker can draw from: frozen
+    predictions plus early lines."""
+    pool = []
+    for sport in sports:
+        pool.extend(get_predictions(sport, week=None))
+        pool.extend(_early_predictions(sport))
+    return pool
+
+
 @app.get("/parlays")
 def get_parlays(sports: str | None = None, horizon_days: int = Query(default=7, ge=1, le=14)):
     """Parlays at three risk tiers (see src/parlay.py), built from every
-    upcoming prediction with a market price. `sports` is a comma-separated
+    upcoming prediction with a market price, including early lines. `sports` is a comma-separated
     filter (e.g. "cfb,nfl"); default is every live sport, so legs can mix
     leagues."""
     live = [s["id"] for s in SPORTS if s["status"] == "live"]
@@ -137,10 +189,45 @@ def get_parlays(sports: str | None = None, horizon_days: int = Query(default=7, 
     if not wanted:
         raise HTTPException(status_code=400, detail=f"sports must be from: {', '.join(live)}")
 
-    predictions = []
-    for sport in wanted:
-        predictions.extend(get_predictions(sport, week=None))
-    return {"sports": wanted, **parlay.build_parlays(predictions, horizon_days=horizon_days)}
+    return {"sports": wanted, **parlay.build_parlays(_parlay_pool(wanted), horizon_days=horizon_days)}
+
+
+@app.get("/parlay-rating")
+def get_parlay_rating(legs: str = Query(..., description="comma-separated sport:game_id:home|away")):
+    """Grade a user-built parlay (src/parlay.py rate_parlay). Each leg must be
+    an upcoming game with a market price -- the same pool the Parlay Picker's
+    tiers draw from."""
+    picks = []
+    for raw in legs.split(","):
+        try:
+            sport, game_id, side = raw.strip().split(":")  # game ids never contain ":"
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Bad leg '{raw}': expected sport:game_id:home|away")
+        if side not in ("home", "away"):
+            raise HTTPException(status_code=400, detail=f"Bad leg '{raw}': side must be home or away")
+        picks.append((sport, game_id, side == "home"))
+
+    live = {s["id"] for s in SPORTS if s["status"] == "live"}
+    candidates = {}
+    for sport in {sport for sport, _, _ in picks}:
+        if sport not in live:
+            raise HTTPException(status_code=400, detail=f"Unknown sport '{sport}'")
+        for leg in parlay.candidate_legs(_parlay_pool([sport]), datetime.now(timezone.utc), timedelta(days=14)):
+            candidates[(leg["sport"], leg["game_id"], leg["is_home"])] = leg
+
+    chosen = []
+    for pick in picks:
+        if pick not in candidates:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Game {pick[1]} isn't available: it has started, or has no market price.",
+            )
+        chosen.append(candidates[pick])
+
+    try:
+        return parlay.rate_parlay(chosen)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.get("/results")

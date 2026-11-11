@@ -189,6 +189,9 @@ export interface ParlayLeg {
   american_odds: number;
   market_source: "live" | "snapshot" | null;
   market_captured_at: string | null;
+  // A not-yet-frozen preview for a game just past the freeze horizon (NBA
+  // games 12-36h out): uses today's data, isn't graded, can still change.
+  early: boolean;
 }
 
 // One risk tier from /parlays (src/parlay.py). Unavailable tiers carry a
@@ -215,4 +218,29 @@ export interface Parlays {
   generated_at: string;
   priced_games: number;
   tiers: ParlayTier[];
+  candidates: ParlayLeg[]; // every pickable side, for the build-your-own rater
+}
+
+export type LegVerdict = "value" | "fair" | "overpriced" | "suspect";
+
+export interface RatedLeg extends ParlayLeg {
+  verdict: LegVerdict;
+  // The probability the rating trusts: the model's, except for "suspect"
+  // legs (gap too large to believe), which count at the market's price.
+  trusted_probability: number;
+}
+
+// /parlay-rating's grade for a user-built parlay (src/parlay.py rate_parlay).
+export interface ParlayRating {
+  score: number; // 0-100
+  grade: "A" | "B" | "C" | "D" | "F";
+  summary: string;
+  legs: RatedLeg[];
+  hit_probability: number;
+  market_hit_probability: number;
+  decimal_odds: number;
+  american_odds: number;
+  expected_return: number;
+  counts: Record<LegVerdict, number>;
+  weakest_leg: { team: string; verdict: LegVerdict; model_probability: number; market_probability: number } | null;
 }
