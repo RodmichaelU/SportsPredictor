@@ -69,4 +69,4 @@ See [frontend/README.md](frontend/README.md). Requires Node 20.9+ (`brew install
 
 ## Deploying
 
-See [deploy/README.md](deploy/README.md): one free always-on server runs the API, the site, and the 3-hourly refresh (systemd timer), so results keep updating without the Mac.
+See [deploy/README.md](deploy/README.md): a GitHub Actions workflow refreshes every 3 hours, exports the data, and publishes the site as static pages on GitHub Pages -- no server, no credit card.
