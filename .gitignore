@@ -24,3 +24,6 @@ data/logs/
 .DS_Store
 .vscode/
 .idea/
+
+# Static export (python -m src.export_static), regenerated every refresh
+frontend/public/data/
