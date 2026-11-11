@@ -26,7 +26,7 @@ export default function SecondaryNav({ defaultSport }: { defaultSport: string })
 
   return (
     <div className="bg-ink-800">
-      <div className="no-scrollbar scroll-fade mx-auto flex w-full max-w-6xl gap-6 overflow-x-auto px-4 sm:px-6">
+      <div className="no-scrollbar mx-auto flex w-full max-w-6xl gap-5 overflow-x-auto px-4 sm:gap-6 sm:px-6">
         {SECTIONS.map((tab) => {
           const active = section === tab;
           return (

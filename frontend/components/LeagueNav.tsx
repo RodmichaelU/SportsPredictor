@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { parlaysPath, parsePath, predictionsPath } from "@/lib/routes";
 import { Sport } from "@/lib/types";
+import LeagueName from "@/components/LeagueName";
 
 // League tabs sit on the dark header: condensed uppercase labels with a
 // full-height red underline on the active league, like a broadcast nav bar.
@@ -26,7 +27,7 @@ export default function LeagueNav({ sports, defaultSport }: { sports: Sport[]; d
   const currentSport = sport ?? (onHome ? null : defaultSport);
 
   return (
-    <nav className="no-scrollbar scroll-fade -mx-4 flex w-[calc(100%+2rem)] items-center gap-6 overflow-x-auto px-4 sm:mx-0 sm:w-auto sm:px-0">
+    <nav className="no-scrollbar -mx-4 flex w-[calc(100%+2rem)] items-center gap-5 overflow-x-auto px-4 sm:mx-0 sm:w-auto sm:gap-6 sm:px-0">
       <Link href="/" className={linkClass(onHome)}>
         Home
       </Link>
@@ -36,22 +37,34 @@ export default function LeagueNav({ sports, defaultSport }: { sports: Sport[]; d
           href={predictionsPath(sport.id)}
           className={`inline-flex items-center gap-1.5 ${linkClass(!onHome && !onParlays && currentSport === sport.id)}`}
         >
-          {sport.name}
+          <LeagueName sport={sport} />
           {sport.status === "coming_soon" && (
-            <span className="rounded-sm bg-white/10 px-1.5 py-0.5 font-sans text-[9px] font-semibold tracking-wide text-neutral-300 uppercase">
+            <span className="hidden rounded-sm bg-white/10 px-1.5 py-0.5 font-sans text-[9px] font-semibold tracking-wide text-neutral-300 uppercase sm:inline">
               Soon
             </span>
           )}
         </Link>
       ))}
-      <Link
-        href={parlaysPath()}
-        className={`eyebrow shrink-0 rounded-full px-3 py-1.5 text-[11px] whitespace-nowrap transition-colors ${
-          onParlays ? "bg-brand-600 text-white" : "bg-white/10 text-white hover:bg-brand-600"
-        }`}
-      >
+      {/* Phones get ParlayShortcut beside the logo instead. */}
+      <Link href={parlaysPath()} className={`hidden sm:flex ${linkClass(onParlays)}`}>
         Parlay Picker
       </Link>
     </nav>
+  );
+}
+
+// The Parlay Picker on phones: beside the logo, where it's always in view,
+// rather than at the far end of a league row that may scroll.
+export function ParlayShortcut() {
+  const { section } = parsePath(usePathname());
+  return (
+    <Link
+      href={parlaysPath()}
+      className={`eyebrow shrink-0 rounded-full px-3.5 py-2 text-[11px] whitespace-nowrap transition-colors sm:hidden ${
+        section === "parlays" ? "bg-brand-600 text-white" : "bg-white/10 text-white active:bg-brand-600"
+      }`}
+    >
+      Parlay Picker
+    </Link>
   );
 }

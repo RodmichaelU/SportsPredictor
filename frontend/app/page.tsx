@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getAccuracy, getParlays, getPredictions, getSports } from "@/lib/api";
 import { pickConfidence } from "@/lib/format";
 import { rankByValue } from "@/lib/valueBets";
+import ChipRow, { chipClass } from "@/components/ChipRow";
 import FeaturedMatchup from "@/components/FeaturedMatchup";
 import GameTicker from "@/components/GameTicker";
 import PickRow from "@/components/PickRow";
@@ -77,21 +78,13 @@ export default async function HomePage() {
                 Machine-learning predictions built only from pre-game facts, graded honestly, and
                 explained in plain English.
               </p>
-              <div className="flex flex-wrap items-center gap-2">
+              <ChipRow>
                 {sports.map((sport) => (
-                  <Link
-                    key={sport.id}
-                    href={predictionsPath(sport.id)}
-                    className={`eyebrow rounded-full px-4 py-2 text-xs transition duration-150 active:scale-[0.97] ${
-                      sport.id === primarySport
-                        ? "bg-brand-600 text-white hover:bg-brand-500"
-                        : "bg-white/10 text-white hover:bg-white/20"
-                    }`}
-                  >
+                  <Link key={sport.id} href={predictionsPath(sport.id)} className={chipClass(sport.id === primarySport)}>
                     {sport.name}
                   </Link>
                 ))}
-              </div>
+              </ChipRow>
             </div>
 
             {featured && (

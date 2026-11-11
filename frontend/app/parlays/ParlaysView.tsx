@@ -2,6 +2,8 @@ import Link from "next/link";
 import { getMeta, getParlays, getSports, getTeamLogos } from "@/lib/api";
 import { parlaysPath } from "@/lib/routes";
 import UpdatedAt from "@/components/UpdatedAt";
+import ChipRow, { chipClass } from "@/components/ChipRow";
+import LeagueName from "@/components/LeagueName";
 import PageBand from "@/components/PageBand";
 import ParlayBuilder from "@/components/ParlayBuilder";
 import ParlayTierCard from "@/components/ParlayTierCard";
@@ -56,22 +58,13 @@ export default async function ParlaysView({ selected }: { selected: string | nul
           </>
         }
       >
-        <nav className="flex flex-wrap gap-2">
-          {[{ id: null, name: "All leagues" }, ...liveSports].map((s) => {
-            const active = selected === s.id;
-            return (
-              <Link
-                key={s.id ?? "all"}
-                href={parlaysPath(s.id)}
-                className={`eyebrow rounded-full px-4 py-2 text-xs transition-colors ${
-                  active ? "bg-brand-600 text-white" : "bg-white/10 text-white hover:bg-white/20"
-                }`}
-              >
-                {s.name}
-              </Link>
-            );
-          })}
-        </nav>
+        <ChipRow>
+          {[{ id: null, name: "All leagues" }, ...liveSports].map((s) => (
+            <Link key={s.id ?? "all"} href={parlaysPath(s.id)} className={chipClass(selected === s.id)}>
+              {s.id ? <LeagueName sport={s} /> : s.name}
+            </Link>
+          ))}
+        </ChipRow>
       </PageBand>
 
       {!parlays ? (
