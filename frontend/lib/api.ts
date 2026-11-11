@@ -78,10 +78,13 @@ export async function getExplanation(sport: string, gameId: string): Promise<Exp
   return readJson<Explanation>(`${sport}/explain/${gameId}.json`);
 }
 
-// Every game with an explanation page, for generateStaticParams.
+// Every game with an explanation page, for generateStaticParams: the
+// exporter lists exactly the ones it could write.
 export async function getGameIds(sport: string): Promise<string[]> {
-  const [predictions, results] = await Promise.all([getPredictions(sport), getResults(sport)]);
-  return [...new Set([...predictions, ...results].map((g) => g.game_id))];
+  if (!HAS_DATA) {
+    return [...new Set([...MOCK_PREDICTIONS, ...MOCK_RESULTS].filter((g) => g.sport === sport).map((g) => g.game_id))];
+  }
+  return readJson<string[]>(`${sport}/explained.json`);
 }
 
 export async function getModelCurve(sport: string, feature: string, target: CurveTarget): Promise<ModelCurve> {
