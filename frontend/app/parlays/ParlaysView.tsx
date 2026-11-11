@@ -1,16 +1,12 @@
-import type { Metadata } from "next";
 import Link from "next/link";
-import { getParlays, getSports, getTeamLogos } from "@/lib/api";
+import { getMeta, getParlays, getSports, getTeamLogos } from "@/lib/api";
+import { parlaysPath } from "@/lib/routes";
+import UpdatedAt from "@/components/UpdatedAt";
 import PageBand from "@/components/PageBand";
 import ParlayBuilder from "@/components/ParlayBuilder";
 import ParlayTierCard from "@/components/ParlayTierCard";
 import SectionHeader from "@/components/SectionHeader";
 import Reveal from "@/components/Reveal";
-
-export const metadata: Metadata = {
-  title: "Parlay Picker",
-  description: "Model-built parlays at three risk tiers, priced by the live prediction market.",
-};
 
 const HOW_IT_WORKS = [
   {
@@ -27,17 +23,16 @@ const HOW_IT_WORKS = [
   },
 ];
 
-export default async function ParlaysPage(props: PageProps<"/parlays">) {
-  const searchParams = await props.searchParams;
+// The Parlay Picker, for all leagues (selected = null, /parlays/) or one
+// (/parlays/<sport>/). Shared by both routes' page.tsx.
+export default async function ParlaysView({ selected }: { selected: string | null }) {
   const sports = await getSports();
   const liveSports = sports.filter((s) => s.status === "live");
-  const selected = typeof searchParams.sport === "string" && liveSports.some((s) => s.id === searchParams.sport)
-    ? searchParams.sport
-    : null;
 
-  const [parlays, logoMaps] = await Promise.all([
-    getParlays(selected ? [selected] : undefined),
+  const [parlays, logoMaps, meta] = await Promise.all([
+    getParlays(selected ?? undefined),
     Promise.all(liveSports.map((s) => getTeamLogos(s.id))),
+    getMeta(),
   ]);
   const logos = Object.fromEntries(liveSports.map((s, i) => [s.id, logoMaps[i]]));
   const snapshotLeg = parlays?.tiers.flatMap((t) => t.legs).find((leg) => leg.market_source === "snapshot");
@@ -53,6 +48,11 @@ export default async function ParlaysPage(props: PageProps<"/parlays">) {
             Three parlays built from this week&apos;s predictions, from a safe two-leg combo to a long shot.
             Legs are games where the model thinks the market is underpricing the pick; when a slate has none,
             a tier shows the model&apos;s likeliest picks instead and says so.
+            {meta && (
+              <div className="mt-4">
+                <UpdatedAt iso={meta.refreshed_at} intervalHours={meta.refresh_interval_hours} variant="pill" />
+              </div>
+            )}
           </>
         }
       >
@@ -62,7 +62,7 @@ export default async function ParlaysPage(props: PageProps<"/parlays">) {
             return (
               <Link
                 key={s.id ?? "all"}
-                href={s.id ? `/parlays?sport=${s.id}` : "/parlays"}
+                href={parlaysPath(s.id)}
                 className={`eyebrow rounded-full px-4 py-2 text-xs transition-colors ${
                   active ? "bg-brand-600 text-white" : "bg-white/10 text-white hover:bg-white/20"
                 }`}
@@ -118,6 +118,7 @@ export default async function ParlaysPage(props: PageProps<"/parlays">) {
                 market is charging too much for.
               </p>
               <ParlayBuilder
+                refreshedAt={meta?.refreshed_at}
                 candidates={parlays.candidates}
                 logos={logos}
                 leagueNames={Object.fromEntries(liveSports.map((s) => [s.id, s.id.toUpperCase()]))}

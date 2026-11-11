@@ -1,20 +1,25 @@
-import { getSports, getStandings } from "@/lib/api";
+import { getSports, getStandings, getTeamSlugs } from "@/lib/api";
 import ComingSoon from "@/components/ComingSoon";
 import PageBand from "@/components/PageBand";
 import Reveal from "@/components/Reveal";
 import StandingsTable from "@/components/StandingsTable";
 
-export default async function StandingsPage(props: PageProps<"/standings">) {
-  const searchParams = await props.searchParams;
+// Pre-built once per league (static export): /standings/cfb/, /standings/nfl/, ...
+export async function generateStaticParams() {
+  return (await getSports()).map((s) => ({ sport: s.id }));
+}
+export const dynamicParams = false;
+
+export default async function StandingsPage(props: PageProps<"/standings/[sport]">) {
+  const { sport } = await props.params;
   const sports = await getSports();
-  const sport = (searchParams.sport as string) ?? sports[0]?.id ?? "cfb";
   const sportInfo = sports.find((s) => s.id === sport);
 
   if (sportInfo?.status === "coming_soon") {
     return <ComingSoon sport={sportInfo} />;
   }
 
-  const standings = await getStandings(sport);
+  const [standings, slugs] = await Promise.all([getStandings(sport), getTeamSlugs(sport)]);
 
   return (
     <div className="flex flex-col gap-10">
@@ -35,7 +40,7 @@ export default async function StandingsPage(props: PageProps<"/standings">) {
       ) : (
         <Reveal className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {standings.groups.map((group) => (
-            <StandingsTable key={group.group} group={group} sport={sport} />
+            <StandingsTable key={group.group} group={group} sport={sport} slugs={slugs} />
           ))}
         </Reveal>
       )}

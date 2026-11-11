@@ -94,10 +94,15 @@ const SECTIONS = [
   { id: "math", label: "The math" },
 ];
 
-export default async function ModelPage(props: PageProps<"/model">) {
-  const searchParams = await props.searchParams;
+// Pre-built once per league (static export): /model/cfb/, /model/nfl/, ...
+export async function generateStaticParams() {
+  return (await getSports()).map((s) => ({ sport: s.id }));
+}
+export const dynamicParams = false;
+
+export default async function ModelPage(props: PageProps<"/model/[sport]">) {
+  const { sport } = await props.params;
   const sports = await getSports();
-  const sport = (searchParams.sport as string) ?? sports[0]?.id ?? "cfb";
   const sportInfo = sports.find((s) => s.id === sport);
 
   if (sportInfo?.status === "coming_soon") {

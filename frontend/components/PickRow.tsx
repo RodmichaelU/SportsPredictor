@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Prediction } from "@/lib/types";
 import { formatGameDate, pickConfidence } from "@/lib/format";
 import TeamBadge from "./TeamBadge";
+import { gamePath } from "@/lib/routes";
 
 // One game as a dense list row (rank, matchup, pick, confidence meter) --
 // for top-N lists and sidebars where a full PredictionCard is too big.
@@ -23,7 +24,7 @@ export default function PickRow({
 
   return (
     <Link
-      href={`/games/${p.game_id}?sport=${sport}`}
+      href={gamePath(sport, p.game_id)}
       className="group flex items-center gap-3 border-b border-neutral-100 py-2.5 last:border-0 dark:border-white/5"
     >
       {rank !== undefined && (

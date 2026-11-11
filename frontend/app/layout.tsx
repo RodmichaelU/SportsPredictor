@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import { Barlow_Condensed, Geist, Geist_Mono } from "next/font/google";
-import { getSports } from "@/lib/api";
+import { getMeta, getSports } from "@/lib/api";
 import LeagueNav from "@/components/LeagueNav";
 import SecondaryNav from "@/components/SecondaryNav";
+import UpdatedAt from "@/components/UpdatedAt";
 import Logo from "@/components/Logo";
 import "./globals.css";
 
@@ -24,13 +25,20 @@ const displayFont = Barlow_Condensed({
   weight: ["600", "700", "800"],
 });
 
+// Icons are plain files in public/ (icon.png is the Logo mark at 32px). Listed
+// explicitly so the subpath (GitHub Pages' /SportsPredictor) is included --
+// Next's generated-icon route leaves it off in a static export.
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
 export const metadata: Metadata = {
   title: { default: "Sports Predictor", template: "%s — Sports Predictor" },
   description: "ML-driven win probability and margin predictions, explained in plain English",
+  icons: { icon: `${basePath}/icon.png`, shortcut: `${basePath}/favicon.ico` },
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const sports = await getSports();
+  const [sports, meta] = await Promise.all([getSports(), getMeta()]);
+  const defaultSport = sports[0]?.id ?? "cfb";
 
   return (
     <html
@@ -47,11 +55,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               </span>
             </Link>
             <Suspense fallback={<div className="h-5 w-56" />}>
-              <LeagueNav sports={sports} />
+              <LeagueNav sports={sports} defaultSport={defaultSport} />
             </Suspense>
           </div>
           <Suspense fallback={null}>
-            <SecondaryNav />
+            <SecondaryNav defaultSport={defaultSport} />
           </Suspense>
         </header>
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">{children}</main>
@@ -63,7 +71,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                 Sports<span className="text-brand-500">Predictor</span>
               </span>
             </Link>
-            <span className="text-xs">Built for research and entertainment. Not betting advice.</span>
+            <div className="flex flex-col gap-1 sm:items-end">
+              {meta && <UpdatedAt iso={meta.refreshed_at} intervalHours={meta.refresh_interval_hours} />}
+              <span className="text-xs">Built for research and entertainment. Not betting advice.</span>
+            </div>
           </div>
         </footer>
       </body>

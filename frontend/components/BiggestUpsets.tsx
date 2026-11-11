@@ -4,6 +4,7 @@ import { rankByUpset } from "@/lib/upsets";
 import { formatPercent } from "@/lib/format";
 import SectionHeader, { Panel } from "./SectionHeader";
 import TeamBadge from "./TeamBadge";
+import { gamePath } from "@/lib/routes";
 
 // The flip side of MarketDisagreements: not "where might we be wrong", but
 // "where we already were", ranked by how confident the model was in the
@@ -24,7 +25,7 @@ export default function BiggestUpsets({ results, sport }: { results: Result[]; s
         {upsets.map(({ result: r, confidence }) => (
           <Link
             key={r.game_id}
-            href={`/games/${r.game_id}?sport=${sport}`}
+            href={gamePath(sport, r.game_id)}
             className="group flex items-center gap-3 border-b border-neutral-100 py-2.5 last:border-0 dark:border-white/5"
           >
             <TeamBadge team={r.actual_winner} sport={sport} size="md" />

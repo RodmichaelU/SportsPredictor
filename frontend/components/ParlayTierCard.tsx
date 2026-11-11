@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { ParlayTier, ParlayTierKey } from "@/lib/types";
 import { formatPercent } from "@/lib/format";
+import EarlyTag from "./EarlyTag";
 import TeamBadge from "./TeamBadge";
+import { gamePath } from "@/lib/routes";
 
 const STAKE = 10;
 
@@ -25,18 +27,6 @@ const TIER_STYLE: Record<ParlayTierKey, { level: number; accent: string; bar: st
     blurb: "Reaches for underpriced underdogs the model rates far better than the market does. Rarely hits, pays big.",
   },
 };
-
-// Marks a not-yet-frozen preview line (see ParlayLeg.early).
-export function EarlyTag() {
-  return (
-    <span
-      title="Early line: predicted from today's data, not frozen yet. Injury news can still change it."
-      className="eyebrow shrink-0 rounded-sm bg-sky-500/15 px-1.5 py-px text-[9px] text-sky-600 dark:text-sky-400"
-    >
-      Early
-    </span>
-  );
-}
 
 function formatAmerican(odds: number): string {
   return odds > 0 ? `+${odds.toLocaleString()}` : odds.toLocaleString();
@@ -107,9 +97,9 @@ export default function ParlayTierCard({ tier }: { tier: ParlayTier }) {
           </div>
 
           <ul className="mt-4 flex-1 px-5">
-            {tier.legs.map((leg) => (
-              <li key={`${leg.sport}-${leg.game_id}`} className="border-t border-neutral-100 first:border-0 dark:border-white/5">
-                <Link href={`/games/${leg.game_id}?sport=${leg.sport}`} className="group flex items-center gap-3 py-3">
+            {tier.legs.map((leg) => {
+              const body = (
+                <>
                   <TeamBadge team={leg.team} sport={leg.sport} size="md" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
@@ -128,9 +118,22 @@ export default function ParlayTierCard({ tier }: { tier: ParlayTier }) {
                       {formatPercent(leg.model_probability)} vs {formatPercent(leg.market_probability)}
                     </div>
                   </div>
-                </Link>
-              </li>
-            ))}
+                </>
+              );
+              return (
+                <li key={`${leg.sport}-${leg.game_id}`} className="border-t border-neutral-100 first:border-0 dark:border-white/5">
+                  {/* Early lines aren't frozen predictions yet, so there's no game
+                      page to link to until they are. */}
+                  {leg.early ? (
+                    <div className="flex items-center gap-3 py-3">{body}</div>
+                  ) : (
+                    <Link href={gamePath(leg.sport, leg.game_id)} className="group flex items-center gap-3 py-3">
+                      {body}
+                    </Link>
+                  )}
+                </li>
+              );
+            })}
           </ul>
 
           <div className="mt-auto border-t border-neutral-100 px-5 py-3 text-xs text-neutral-500 dark:border-white/5">

@@ -3,6 +3,7 @@ import { Prediction } from "@/lib/types";
 import { formatPercent } from "@/lib/format";
 import SectionHeader, { Panel } from "./SectionHeader";
 import TeamBadge from "./TeamBadge";
+import { gamePath } from "@/lib/routes";
 
 function ProbabilityRow({ label, value, colorClass }: { label: string; value: number; colorClass: string }) {
   return (
@@ -35,7 +36,7 @@ export default function MarketDisagreements({ predictions, sport }: { prediction
       <SectionHeader title="Model vs. market" eyebrow="Biggest disagreements with Kalshi" />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {ranked.map(({ prediction: p, gap }) => (
-          <Link key={p.game_id} href={`/games/${p.game_id}?sport=${sport}`} className="group">
+          <Link key={p.game_id} href={gamePath(sport, p.game_id)} className="group">
             <Panel className="flex h-full flex-col gap-3 p-5 transition-shadow group-hover:shadow-lg">
               <div className="flex items-center gap-2">
                 <TeamBadge team={p.home_team} sport={sport} size="sm" />

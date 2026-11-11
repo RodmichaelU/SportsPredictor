@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ValueBet } from "@/lib/valueBets";
 import TeamBadge from "./TeamBadge";
+import { gamePath } from "@/lib/routes";
 
 // A compact horizontal-scroll strip of this week's best value bets -- the
 // games where our model and the live market disagree most, weighted by
@@ -19,7 +20,7 @@ export default function GameTicker({ picks, sport }: { picks: ValueBet[]; sport:
         {picks.map(({ prediction: p, team, modelProb, marketProb, roi }) => (
           <Link
             key={p.game_id}
-            href={`/games/${p.game_id}?sport=${sport}`}
+            href={gamePath(sport, p.game_id)}
             className="flex w-52 shrink-0 snap-start flex-col gap-2 border-t-2 border-transparent bg-ink-800 p-3 transition-colors duration-150 first:rounded-l-sm last:rounded-r-sm hover:border-brand-500 hover:bg-[#252932]"
           >
             {[p.away_team, p.home_team].map((t) => (

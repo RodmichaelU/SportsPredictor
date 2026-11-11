@@ -1,21 +1,28 @@
 import Link from "next/link";
-import { getSports, getTeams } from "@/lib/api";
+import { getSports, getTeamSlugs } from "@/lib/api";
+import { teamPath } from "@/lib/routes";
 import ComingSoon from "@/components/ComingSoon";
 import PageBand from "@/components/PageBand";
 import TeamBadge from "@/components/TeamBadge";
 import Reveal from "@/components/Reveal";
 
-export default async function TeamsIndexPage(props: PageProps<"/teams">) {
-  const searchParams = await props.searchParams;
+// Pre-built once per league (static export): /teams/cfb/, /teams/nfl/, ...
+export async function generateStaticParams() {
+  return (await getSports()).map((s) => ({ sport: s.id }));
+}
+export const dynamicParams = false;
+
+export default async function TeamsIndexPage(props: PageProps<"/teams/[sport]">) {
+  const { sport } = await props.params;
   const sports = await getSports();
-  const sport = (searchParams.sport as string) ?? sports[0]?.id ?? "cfb";
   const sportInfo = sports.find((s) => s.id === sport);
 
   if (sportInfo?.status === "coming_soon") {
     return <ComingSoon sport={sportInfo} />;
   }
 
-  const teams = await getTeams(sport);
+  const slugs = await getTeamSlugs(sport);
+  const teams = Object.keys(slugs).sort();
 
   return (
     <div className="flex flex-col gap-10">
@@ -37,7 +44,7 @@ export default async function TeamsIndexPage(props: PageProps<"/teams">) {
           {teams.map((team) => (
             <Link
               key={team}
-              href={`/teams/${encodeURIComponent(team)}?sport=${sport}`}
+              href={teamPath(sport, slugs[team])}
               className="group flex items-center gap-3 rounded-md border border-neutral-200 bg-white p-3 shadow-sm transition-[box-shadow,transform,border-color] duration-150 ease-out hover:-translate-y-0.5 hover:border-brand-500 hover:shadow-md active:scale-[0.98] dark:border-white/10 dark:bg-ink-900"
             >
               <TeamBadge team={team} sport={sport} size="md" />

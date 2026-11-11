@@ -1,19 +1,24 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getExplanation } from "@/lib/api";
+import { getExplanation, getGameIds, getSports, getTeamSlugs } from "@/lib/api";
+import { predictionsPath, teamPath } from "@/lib/routes";
 import { formatPercent, pickConfidence } from "@/lib/format";
 import ProbabilityDuel from "@/components/ProbabilityDuel";
 import ExplanationFactor from "@/components/ExplanationFactor";
 import SectionHeader, { Panel } from "@/components/SectionHeader";
 import TeamBadge from "@/components/TeamBadge";
 
-// Reuses the same getExplanation call the page below makes -- Next
-// memoizes fetches with identical args across generateMetadata and the
-// page component in one request, so this doesn't cost a second round-trip.
-export async function generateMetadata(props: PageProps<"/games/[gameId]">): Promise<Metadata> {
-  const { gameId } = await props.params;
-  const searchParams = await props.searchParams;
-  const sport = (searchParams.sport as string) ?? "cfb";
+// Pre-built for every game with a prediction or result, in every live league.
+export async function generateStaticParams() {
+  const sports = (await getSports()).filter((s) => s.status === "live");
+  const ids = await Promise.all(sports.map((s) => getGameIds(s.id)));
+  return sports.flatMap((s, i) => ids[i].map((gameId) => ({ sport: s.id, gameId })));
+}
+export const dynamicParams = false;
+
+// Reads the same exported file the page below does (lib/api.ts memoizes it).
+export async function generateMetadata(props: PageProps<"/games/[sport]/[gameId]">): Promise<Metadata> {
+  const { sport, gameId } = await props.params;
 
   try {
     const data = await getExplanation(sport, gameId);
@@ -27,12 +32,10 @@ export async function generateMetadata(props: PageProps<"/games/[gameId]">): Pro
   }
 }
 
-export default async function GameExplanationPage(props: PageProps<"/games/[gameId]">) {
-  const { gameId } = await props.params;
-  const searchParams = await props.searchParams;
-  const sport = (searchParams.sport as string) ?? "cfb";
+export default async function GameExplanationPage(props: PageProps<"/games/[sport]/[gameId]">) {
+  const { sport, gameId } = await props.params;
 
-  const data = await getExplanation(sport, gameId);
+  const [data, slugs] = await Promise.all([getExplanation(sport, gameId), getTeamSlugs(sport)]);
   const maxAbsContribution = Math.max(...data.groups.map((g) => Math.abs(g.contribution)), 0);
 
   const homePct = data.win_probability;
@@ -47,7 +50,7 @@ export default async function GameExplanationPage(props: PageProps<"/games/[game
       <section className="bleed relative -mt-8 overflow-hidden bg-ink-950 text-white">
         <div aria-hidden className="broadcast-bg pointer-events-none absolute inset-0 opacity-70" />
         <div className="bleed-inner relative py-8">
-          <Link href={`/predictions?sport=${sport}`} className="eyebrow text-xs text-neutral-400 hover:text-white">
+          <Link href={predictionsPath(sport)} className="eyebrow text-xs text-neutral-400 hover:text-white">
             ‹ Back to predictions
           </Link>
           <h1 className="sr-only">
@@ -66,7 +69,7 @@ export default async function GameExplanationPage(props: PageProps<"/games/[game
               ) : (
                 <Link
                   key={t.team}
-                  href={`/teams/${encodeURIComponent(t.team)}?sport=${sport}`}
+                  href={slugs[t.team] ? teamPath(sport, slugs[t.team]) : predictionsPath(sport)}
                   className={`group flex min-w-0 flex-col gap-3 ${t.align}`}
                 >
                   <div className={`flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4 ${i === 2 ? "items-end sm:flex-row-reverse" : "items-start"}`}>

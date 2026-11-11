@@ -2,15 +2,14 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 Requires Node 20.9+ (Next.js 16). If your system Node is older, install one via `brew install node@20` and `export PATH="/opt/homebrew/opt/node@20/bin:$PATH"` before running the commands below, or use `nvm use` (see `.nvmrc`).
 
-`lib/api.ts` calls the real FastAPI backend (`../api/main.py`) when `NEXT_PUBLIC_API_URL` is set (see `.env.local`, gitignored), and falls back to typed mock data in `lib/mockData.ts` otherwise — useful for UI work without the backend running. To see real predictions:
+The site is a static export (`output: "export"`): every page is pre-built from JSON files that `python -m src.export_static` writes to `public/data/`, and `lib/api.ts` reads those at build time. With no export present it falls back to typed mock data in `lib/mockData.ts` (useful for UI work). To see real data:
 
 ```bash
-# from the repo root, in another terminal
-source .venv/bin/activate
-uvicorn api.main:app --port 8000
+# from the repo root
+.venv/bin/python -m src.export_static
 ```
 
-`.env.local` already points `NEXT_PUBLIC_API_URL` at `http://localhost:8000`.
+Then run the dev server below. Browser-side code (the model curve explorer, the parlay rater) uses `lib/clientData.ts` and `lib/parlayRating.js` instead of `lib/api.ts`, which reads the filesystem. Deployment is covered in [../deploy/README.md](../deploy/README.md).
 
 ## Getting Started
 

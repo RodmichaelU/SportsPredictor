@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { getPredictions, getSports } from "@/lib/api";
+import { getMeta, getPredictions, getSports } from "@/lib/api";
+import { modelPath } from "@/lib/routes";
+import UpdatedAt from "@/components/UpdatedAt";
 import { Prediction } from "@/lib/types";
 import { pickConfidence } from "@/lib/format";
 import PredictionCard from "@/components/PredictionCard";
@@ -14,17 +16,22 @@ function dayKey(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
 }
 
-export default async function PredictionsPage(props: PageProps<"/predictions">) {
-  const searchParams = await props.searchParams;
+// Pre-built once per league (static export): /predictions/cfb/, /predictions/nfl/, ...
+export async function generateStaticParams() {
+  return (await getSports()).map((s) => ({ sport: s.id }));
+}
+export const dynamicParams = false;
+
+export default async function PredictionsPage(props: PageProps<"/predictions/[sport]">) {
+  const { sport } = await props.params;
   const sports = await getSports();
-  const sport = (searchParams.sport as string) ?? sports[0]?.id ?? "cfb";
   const sportInfo = sports.find((s) => s.id === sport);
 
   if (sportInfo?.status === "coming_soon") {
     return <ComingSoon sport={sportInfo} />;
   }
 
-  const predictions = await getPredictions(sport);
+  const [predictions, meta] = await Promise.all([getPredictions(sport), getMeta()]);
   const strongest = [...predictions].sort((a, b) => pickConfidence(b) - pickConfidence(a))[0];
 
   // Chronological, grouped by game day.
@@ -44,10 +51,15 @@ export default async function PredictionsPage(props: PageProps<"/predictions">) 
           <>
             {predictions.length} upcoming games, each frozen before kickoff. Tap any game to see why the
             model likes its pick, or{" "}
-            <Link href={`/model?sport=${sport}`} className="underline decoration-white/30 underline-offset-2 hover:text-brand-400">
+            <Link href={modelPath(sport)} className="underline decoration-white/30 underline-offset-2 hover:text-brand-400">
               how the model works
             </Link>
             .
+            {meta && (
+              <div className="mt-4">
+                <UpdatedAt iso={meta.refreshed_at} intervalHours={meta.refresh_interval_hours} variant="pill" />
+              </div>
+            )}
           </>
         }
         aside={
