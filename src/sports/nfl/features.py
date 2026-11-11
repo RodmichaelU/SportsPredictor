@@ -232,6 +232,11 @@ def add_model_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def load_feature_table() -> pd.DataFrame:
+    if not FEATURES_PATH.exists():
+        # Fresh checkout (e.g. the GitHub Actions runner): build it once, the
+        # same way `python -m src.sports.nfl.features` does. Raw data is
+        # downloaded and cached on first use, so later runs just read the file.
+        build_features(config.START_SEASON, config.CURRENT_SEASON).to_parquet(FEATURES_PATH, index=False)
     return add_model_features(pd.read_parquet(FEATURES_PATH))
 
 

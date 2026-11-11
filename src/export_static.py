@@ -14,7 +14,8 @@ Layout (under --out, default frontend/public/data):
     <sport>/predictions.json, results.json, accuracy.json, accuracy-by-week.json,
             calibration.json, model-weights.json, standings.json, logos.json,
             teams.json ([{team, slug}]), team/<slug>.json, explain/<game_id>.json,
-            curves/<feature>__<win|margin>.json, parlays.json
+            curves/<feature>__<win|margin>.json, explained.json (game ids with a
+            page), parlays.json
 
 Run: python -m src.export_static
 """
@@ -56,6 +57,13 @@ def _safe(fn, *args, **kwargs):
         return None
 
 
+def _empty_parlays(sports: list[str]) -> dict:
+    return {
+        "sports": sports, "generated_at": datetime.now(timezone.utc).isoformat(),
+        "priced_games": 0, "tiers": [], "candidates": [],
+    }
+
+
 def export(out: Path) -> dict:
     # Imported here so `--help` doesn't pay for loading every model module.
     from api import main as api
@@ -68,6 +76,11 @@ def export(out: Path) -> dict:
     live = [s["id"] for s in sports if s["status"] == "live"]
     _write(tmp / "sports.json", sports)
 
+    # Anything read straight from the predictions database always exports.
+    # Pieces that need the raw history or a trained model (logos, standings,
+    # weights and curves, team pages, explanations, parlays) go through
+    # _safe and fall back to an empty placeholder, so one league's data source
+    # being down degrades that league's pages instead of failing the build.
     counts = {}
     for sport in live:
         d = tmp / sport
@@ -78,11 +91,13 @@ def export(out: Path) -> dict:
         _write(d / "accuracy.json", api.get_accuracy(sport))
         _write(d / "accuracy-by-week.json", api.get_accuracy_by_week(sport))
         _write(d / "calibration.json", api.get_calibration(sport, n_bins=10))
-        _write(d / "logos.json", api.get_team_logos(sport))
+        _write(d / "logos.json", _safe(api.get_team_logos, sport) or {})
         standings = _safe(api.get_standings, sport, season=None) or {"sport": sport, "season": config.CURRENT_SEASON, "groups": []}
         _write(d / "standings.json", standings)
 
-        weights = api.get_model_weights(sport)
+        weights = _safe(api.get_model_weights, sport) or {
+            "sport": sport, "model_version": "unavailable", "trained_on_games": 0, "weights": [],
+        }
         _write(d / "model-weights.json", weights)
         for w in weights["weights"]:
             for target in ("win", "margin"):
@@ -110,18 +125,20 @@ def export(out: Path) -> dict:
         _write(d / "teams.json", teams_written)
 
         game_ids = {str(p["game_id"]) for p in predictions} | {str(r["game_id"]) for r in results}
-        explained = 0
+        explained = []
         for game_id in sorted(game_ids):
             explanation = _safe(api.get_explain, sport, game_id=game_id)
             if explanation:
                 _write(d / "explain" / f"{game_id}.json", explanation)
-                explained += 1
+                explained.append(game_id)
+        # Which games have a page: the site pre-builds exactly these.
+        _write(d / "explained.json", explained)
 
-        _write(d / "parlays.json", api.get_parlays(sports=sport, horizon_days=7))
-        counts[sport] = {"games": explained, "teams": len(teams_written)}
-        print(f"  {sport}: {explained} games, {len(teams_written)} teams")
+        _write(d / "parlays.json", _safe(api.get_parlays, sports=sport, horizon_days=7) or _empty_parlays([sport]))
+        counts[sport] = {"games": len(explained), "teams": len(teams_written)}
+        print(f"  {sport}: {len(explained)} games, {len(teams_written)} teams")
 
-    _write(tmp / "parlays" / "all.json", api.get_parlays(sports=None, horizon_days=7))
+    _write(tmp / "parlays" / "all.json", _safe(api.get_parlays, sports=None, horizon_days=7) or _empty_parlays(live))
 
     meta = {
         # What the site shows as "last updated": the moment these files (and
