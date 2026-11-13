@@ -3,7 +3,7 @@ import { getMeta, getPredictions, getSports } from "@/lib/api";
 import { modelPath } from "@/lib/routes";
 import UpdatedAt from "@/components/UpdatedAt";
 import { Prediction } from "@/lib/types";
-import { pickConfidence } from "@/lib/format";
+import { pickConfidence, SITE_TIME_ZONE } from "@/lib/format";
 import PredictionCard from "@/components/PredictionCard";
 import ComingSoon from "@/components/ComingSoon";
 import FeaturedMatchup from "@/components/FeaturedMatchup";
@@ -13,7 +13,7 @@ import SectionHeader from "@/components/SectionHeader";
 import Reveal from "@/components/Reveal";
 
 function dayKey(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
+  return new Date(iso).toLocaleDateString(undefined, { timeZone: SITE_TIME_ZONE, weekday: "long", month: "short", day: "numeric" });
 }
 
 // Pre-built once per league (static export): /predictions/cfb/, /predictions/nfl/, ...

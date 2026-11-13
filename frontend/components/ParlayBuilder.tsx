@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { SITE_TIME_ZONE } from "@/lib/format";
 import { americanOdds, rateParlay } from "@/lib/parlayRating";
 import { LegVerdict, ParlayLeg, ParlayRating } from "@/lib/types";
 import EarlyTag from "./EarlyTag";
@@ -178,7 +179,7 @@ export default function ParlayBuilder({
                 <div className="mb-2 flex items-center justify-between text-[11px] font-semibold tracking-wide text-neutral-500 uppercase">
                   <span className="flex items-center gap-2" suppressHydrationWarning>
                     {game.home.early && <EarlyTag />}
-                    {new Date(game.game_date).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                    {new Date(game.game_date).toLocaleString(undefined, { timeZone: SITE_TIME_ZONE, weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                   </span>
                   <span>{game.sport.toUpperCase()}</span>
                 </div>

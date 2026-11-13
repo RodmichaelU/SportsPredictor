@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Prediction } from "@/lib/types";
-import { pickConfidence } from "@/lib/format";
+import { pickConfidence, SITE_TIME_ZONE } from "@/lib/format";
 import TeamBadge from "./TeamBadge";
 import { gamePath, predictionsPath } from "@/lib/routes";
 
@@ -15,7 +15,7 @@ export interface ScoreStripGroup {
 const SECONDS_PER_TILE = 4;
 
 function shortTime(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" });
+  return new Date(iso).toLocaleString(undefined, { timeZone: SITE_TIME_ZONE, weekday: "short", hour: "numeric", minute: "2-digit" });
 }
 
 function Tiles({ groups, duplicate = false }: { groups: ScoreStripGroup[]; duplicate?: boolean }) {

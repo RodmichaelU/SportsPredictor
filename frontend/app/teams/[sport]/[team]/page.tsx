@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getSports, getTeamBySlug, getTeamSlugs } from "@/lib/api";
 import { gamePath, teamPath, teamsPath } from "@/lib/routes";
 import { Result, TeamGame } from "@/lib/types";
-import { pickConfidence } from "@/lib/format";
+import { pickConfidence, SITE_TIME_ZONE } from "@/lib/format";
 import ComingSoon from "@/components/ComingSoon";
 import EloTrendChart from "@/components/EloTrendChart";
 import PredictionCard from "@/components/PredictionCard";
@@ -144,7 +144,7 @@ export default async function TeamPage(props: PageProps<"/teams/[sport]/[team]">
                   return (
                     <tr key={g.game_id} className="border-t border-neutral-100 even:bg-neutral-50/60 dark:border-white/5 dark:even:bg-white/[0.02]">
                       <td className="px-3 py-2.5 sm:px-4 whitespace-nowrap text-neutral-500">
-                        {new Date(g.game_date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                        {new Date(g.game_date).toLocaleDateString(undefined, { timeZone: SITE_TIME_ZONE, month: "short", day: "numeric" })}
                       </td>
                       <td className="px-3 py-2.5 sm:px-4">
                         <Link

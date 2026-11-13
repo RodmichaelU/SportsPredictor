@@ -23,8 +23,14 @@ export function formatPercent(value: number): string {
   return `${Math.round(value * 100)}%`;
 }
 
+// Game dates are formatted when the static site is built, on a server whose
+// clock is UTC, where a 5 PM game would already be tomorrow. Pinning one zone
+// keeps every page (and the browser's re-render) on the same day and time.
+export const SITE_TIME_ZONE = "America/Edmonton";
+
 export function formatGameDate(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
+    timeZone: SITE_TIME_ZONE,
     weekday: "short",
     month: "short",
     day: "numeric",

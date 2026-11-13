@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ParlayTier, ParlayTierKey } from "@/lib/types";
-import { formatPercent } from "@/lib/format";
+import { formatPercent, SITE_TIME_ZONE } from "@/lib/format";
 import EarlyTag from "./EarlyTag";
 import TeamBadge from "./TeamBadge";
 import { gamePath } from "@/lib/routes";
@@ -33,7 +33,7 @@ function formatAmerican(odds: number): string {
 }
 
 function shortDate(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" });
+  return new Date(iso).toLocaleString(undefined, { timeZone: SITE_TIME_ZONE, weekday: "short", hour: "numeric", minute: "2-digit" });
 }
 
 // One risk tier: the payout up front, the two hit chances (ours vs. the

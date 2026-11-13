@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getMeta, getParlays, getSports, getTeamLogos } from "@/lib/api";
+import { SITE_TIME_ZONE } from "@/lib/format";
 import { parlaysPath } from "@/lib/routes";
 import UpdatedAt from "@/components/UpdatedAt";
 import ChipRow, { chipClass } from "@/components/ChipRow";
@@ -85,6 +86,7 @@ export default async function ParlaysView({ selected }: { selected: string | nul
                 {" "}
                 Kalshi&apos;s live feed is unreachable right now, so prices are the latest saved snapshot from{" "}
                 {new Date(snapshotLeg.market_captured_at).toLocaleString(undefined, {
+                  timeZone: SITE_TIME_ZONE,
                   weekday: "short",
                   hour: "numeric",
                   minute: "2-digit",
